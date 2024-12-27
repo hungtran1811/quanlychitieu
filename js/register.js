@@ -55,7 +55,7 @@ registerForm.addEventListener("submit", async (event) => {
                   password: password,
                 });
                 alert("Register successfully");
-                window.location.href = "./index.html";
+                window.location.href = "../index.html";
               } catch (error) {
                 alert(error.message);
               }
