@@ -1,0 +1,171 @@
+:root {
+    --bg: #0b0f14;
+    --card: #121821;
+    --muted: #8aa0b4;
+    --text: #e7eef5;
+    --acc: #4f8cff;
+    --acc2: #00c2a8;
+}
+
+* {
+    box-sizing: border-box
+}
+
+html,
+body {
+    height: 100%
+}
+
+body {
+    margin: 0;
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+    background: radial-gradient(1200px 600px at 80% -10%, #132033 0%, rgba(19, 32, 51, 0) 60%), radial-gradient(900px 500px at 0% 110%, #0f2b2e 0%, rgba(15, 43, 46, 0) 60%), var(--bg);
+    color: var(--text)
+}
+
+.container {
+    max-width: 980px;
+    margin: 24px auto;
+    padding: 0 16px;
+    display: grid;
+    gap: 16px
+}
+
+.nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px
+}
+
+.logo {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, var(--acc), var(--acc2));
+    display: grid;
+    place-items: center;
+    font-weight: 800
+}
+
+.row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap
+}
+
+.btn {
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, .18);
+    background: transparent;
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer
+}
+
+.btn:hover {
+    background: rgba(255, 255, 255, .06)
+}
+
+.primary {
+    background: #fff;
+    color: #111;
+    border: none
+}
+
+.primary:hover {
+    filter: brightness(.98)
+}
+
+.card {
+    width: 100%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .02));
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .35);
+    backdrop-filter: blur(8px)
+}
+
+.inner {
+    padding: 20px
+}
+
+.small {
+    font-size: 12px
+}
+
+.muted {
+    color: var(--muted)
+}
+
+.hidden {
+    display: none !important
+}
+
+.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, .12);
+    object-fit: cover
+}
+
+label {
+    font-size: 13px;
+    color: #b9c6d6
+}
+
+input,
+textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, .16);
+    background: rgba(0, 0, 0, .25);
+    color: var(--text)
+}
+
+input:focus,
+textarea:focus {
+    outline: 2px solid rgba(79, 140, 255, .35)
+}
+
+/* Ẩn phần cần login với khách */
+body[data-auth="guest"] [data-auth-required] {
+    display: none !important;
+}
+
+/* Ẩn phần chỉ admin với non-admin */
+body[data-admin="0"] [data-admin-only] {
+    display: none !important;
+}
+
+.footer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 10px 16px;
+    display: flex;
+    justify-content: center;
+    backdrop-filter: blur(8px)
+}
+
+.userbox {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    background: rgba(255, 255, 255, .04);
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 14px;
+    padding: 8px 12px
+}

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ExpenseApp • Phase 1</title>
+    <link rel="stylesheet" href="assets/css/base.css" />
+    <link rel="stylesheet" href="assets/css/components.css" />
+  </head>
+  <body data-auth="guest" data-admin="0">
+    <header class="nav">
+      <div class="brand">
+        <div class="logo">₫</div>
+        <div>
+          <strong>ExpenseApp</strong>
+          <div class="muted small">Phase 1 • Auth + Requests</div>
+        </div>
+      </div>
+      <nav class="row">
+        <span id="admin-badge" class="admin-badge hidden">Admin</span>
+        <button data-link="#/welcome" class="btn">Trang chào</button>
+        <button data-link="#/add" class="btn" data-auth-required>
+          Thêm khoản chi
+        </button>
+        <button data-link="#/mine" class="btn" data-auth-required>
+          Yêu cầu của tôi
+        </button>
+        <button id="btn-login" class="btn primary">Đăng nhập Google</button>
+        <button id="btn-logout" class="btn hidden" data-auth-required>
+          Đăng xuất
+        </button>
+      </nav>
+    </header>
+
+    <main id="app-root" class="container"></main>
+
+    <footer class="footer">
+      <div class="userbox">
+        <img id="user-photo" class="avatar" alt="avatar" />
+        <div>
+          <div><strong id="user-name">Khách</strong></div>
+          <div class="muted small">
+            <span id="user-email">—</span> • <span id="user-uid">—</span>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
