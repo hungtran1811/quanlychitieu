@@ -1,33 +1,30 @@
 import { getDb } from "./firestore.js";
 import {
   collection,
-  getDocs,
+  onSnapshot,
   query,
   where,
   orderBy,
-  limit,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-export async function getExpensesAsPayer(payerEmail, max = 200) {
-  const db = getDb();
+export function subscribeExpensesAsPayer(payerEmail, onChange) {
   const q = query(
-    collection(db, "expenses"),
+    collection(getDb(), "expenses"),
     where("payerEmail", "==", payerEmail),
-    orderBy("date", "desc"),
-    limit(max)
+    orderBy("date", "desc")
   );
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => d.data());
+  return onSnapshot(q, (snap) =>
+    onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+  );
 }
 
-export async function getExpensesWithMe(myEmail, max = 200) {
-  const db = getDb();
+export function subscribeExpensesWithMe(myEmail, onChange) {
   const q = query(
-    collection(db, "expenses"),
+    collection(getDb(), "expenses"),
     where("participantsEmails", "array-contains", myEmail),
-    orderBy("date", "desc"),
-    limit(max)
+    orderBy("date", "desc")
   );
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => d.data());
+  return onSnapshot(q, (snap) =>
+    onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+  );
 }
