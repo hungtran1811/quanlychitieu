@@ -63,7 +63,7 @@ export function subscribeMyRequests(uid, cb) {
   });
 }
 
-/* ===== Admin: danh sách / thay đổi trạng thái ===== */
+/* ===== Admin: one-shot + realtime ===== */
 export async function listRequestsAdmin({
   status = "pending",
   type = "all",
@@ -80,6 +80,26 @@ export async function listRequestsAdmin({
   );
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+/** 🔄 Realtime theo filter */
+export function subscribeRequestsAdmin(
+  { status = "pending", type = "all", take = 80 } = {},
+  cb
+) {
+  const db = getDb();
+  const wheres = [where("status", "==", status)];
+  if (type !== "all") wheres.push(where("type", "==", type));
+  const q = query(
+    collection(db, "requests"),
+    ...wheres,
+    orderBy("createdAt", "desc"),
+    limit(take)
+  );
+  return onSnapshot(q, (snap) => {
+    const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    cb(rows);
+  });
 }
 
 export async function markRequestStatus(id, { status, note, adminUid }) {
