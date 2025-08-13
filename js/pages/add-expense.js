@@ -2,7 +2,7 @@ import { currentUser } from "../auth.js";
 import { createExpenseRequest } from "../store/requests.js";
 import { money, ymd } from "../utils/format.js";
 import { toast } from "../utils/toast.js";
-import { listDirectory } from "../store/directory.js";
+import { listDirectory } from "../store/directory.js"; // <— thêm
 
 export async function render() {
   const root = document.getElementById("app-root");
@@ -15,23 +15,21 @@ export async function render() {
       <div><label>Số tiền (VND)</label><input id="f-amount" type="number" min="1" step="1" placeholder="vd. 150000" required /></div>
       <div style="grid-column:1/-1"><label>Ghi chú</label><input id="f-note" type="text" placeholder="vd. Mua đồ siêu thị" /></div>
       <div style="grid-column:1/-1"><label>Những người mua cùng (emails, cách nhau dấu phẩy)</label>
-  <input id="f-participants" type="text" list="emails-list" placeholder="a@gmail.com, b@gmail.com" />
-  <datalist id="emails-list"></datalist>
-  <div id="email-chips" class="chips"></div> <!-- gợi ý dạng chip -->
-</div>
-<div style="grid-column:1/-1">
-  <label>Người trả tiền (email)</label>
-  <input id="f-payer" type="email" list="emails-list" placeholder="mặc định là email của bạn nếu bỏ trống" /></div>
-  <datalist id="emails-list"></datalist>
-  <div id="email-chips" class="chips"></div> <!-- gợi ý dạng chip -->
+        <input id="f-participants" type="text" list="emails-list" placeholder="a@gmail.com, b@gmail.com" />
+        <datalist id="emails-list"></datalist>
+        <div id="email-chips" class="chips"></div>
+      </div>
+      <div style="grid-column:1/-1"><label>Người trả tiền (email)</label>
+        <input id="f-payer" type="email" list="emails-list" placeholder="mặc định là email của bạn nếu bỏ trống" />
+      </div>
       <div style="grid-column:1/-1" class="row"><button class="btn primary" type="submit">Gửi yêu cầu</button><span id="req-status" class="muted small"></span></div>
     </form>
   </div></section>`;
 
-  // nạp danh bạ vào datalist + chips
+  // nạp gợi ý email
+  const users = await listDirectory();
   const dl = document.getElementById("emails-list");
   const chips = document.getElementById("email-chips");
-  const users = await listDirectory();
   dl.innerHTML = users
     .map(
       (u) =>
@@ -48,9 +46,7 @@ export async function render() {
         }</span>`
     )
     .join("");
-
-  // click chip -> thêm vào participants
-  chips.querySelectorAll(".chip").forEach((c) => {
+  chips.querySelectorAll(".chip").forEach((c) =>
     c.addEventListener("click", () => {
       const input = document.getElementById("f-participants");
       const cur = (input.value || "")
@@ -60,8 +56,8 @@ export async function render() {
       const email = c.dataset.email;
       if (!cur.includes(email)) cur.push(email);
       input.value = cur.join(", ");
-    });
-  });
+    })
+  );
 
   const form = document.getElementById("form-expense");
   form.addEventListener("submit", async (e) => {

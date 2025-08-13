@@ -15,6 +15,7 @@ export async function upsertDirectoryEntry({
   photoURL,
 }) {
   const db = getDb();
+  if (!uid) return;
   await setDoc(
     doc(db, "directory", uid),
     {

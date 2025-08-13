@@ -1,6 +1,6 @@
-import { getAuthInst } from "./store/firestore.js";
+import { getAuthInst } from "./store/firestore.js"; // firestore đã auto init
 import { onAuthChanges, login, logout } from "./auth.js";
-import { attachRouter } from "./router.js";
+import { attachRouter, setAuthGuardState } from "./router.js";
 import { $, setBodyFlags } from "./utils/dom.js";
 import { randomGuestAvatar } from "./utils/avatar.js";
 
@@ -29,13 +29,14 @@ $("#btn-login")?.addEventListener("click", async () => {
 $("#btn-logout")?.addEventListener("click", async () => {
   try {
     await logout();
-  } catch (e) {
-    console.error(e);
+  } finally {
+    location.hash = "#/welcome";
   }
 });
 
-// Auth state → cập nhật UI footer + nút
+// Auth state → cập nhật UI + guard
 onAuthChanges(({ user, isAdmin }) => {
+  setAuthGuardState(!!user);
   setBodyFlags({ authed: !!user, admin: isAdmin });
   const nameEl = $("#user-name");
   const emailEl = $("#user-email");
@@ -57,10 +58,21 @@ onAuthChanges(({ user, isAdmin }) => {
     $("#btn-login").classList.remove("hidden");
     $("#btn-logout").classList.add("hidden");
     $("#admin-badge").classList.add("hidden");
+    if (
+      [
+        "#/add",
+        "#/mine",
+        "#/dashboard",
+        "#/pay",
+        "#/admin/queue",
+        "#/admin/overview",
+      ].includes(location.hash.split("?")[0])
+    ) {
+      location.hash = "#/welcome";
+    }
   }
 });
 
-// Tip khi chạy file://
 if (location.protocol === "file:") {
   console.warn(
     "Hãy chạy qua Hosting/HTTP server để Google Sign-In hoạt động đúng."

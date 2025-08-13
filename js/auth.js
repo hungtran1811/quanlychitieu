@@ -1,4 +1,3 @@
-import { upsertDirectoryEntry } from "./store/directory.js";
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -9,6 +8,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 import { getAuthInst } from "./store/firestore.js";
 import { ADMIN_UID } from "./config.js";
+import { upsertDirectoryEntry } from "./store/directory.js"; // <— thêm
 
 const subscribers = new Set();
 export function onAuthChanges(cb) {
@@ -20,15 +20,14 @@ export function onAuthChanges(cb) {
   await setPersistence(auth, browserLocalPersistence);
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: "select_account" });
-  onAuthStateChanged(auth, (user) => {
+  onAuthStateChanged(auth, async (user) => {
     const isAdmin = !!user && user.uid === ADMIN_UID;
     if (user) {
-      upsertDirectoryEntry({
-        uid: user.uid,
-        email: user.email || "",
-        displayName: user.displayName || "",
-        photoURL: user.photoURL || "",
-      }).catch(console.error);
+      try {
+        await upsertDirectoryEntry(user);
+      } catch (e) {
+        console.error(e);
+      }
     }
     subscribers.forEach((cb) => cb({ user, isAdmin }));
   });
