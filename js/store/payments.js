@@ -1,40 +1,26 @@
 import { getDb } from "./firestore.js";
 import {
   collection,
-  onSnapshot,
   query,
   where,
-  orderBy,
+  getDocs,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-export function subscribePaymentsOfMe(myEmail, onChange) {
+/** Lấy payments trong [startISO, endISO) – các record đã duyệt */
+export async function listPaymentsInRange(startISO, endISO) {
   const db = getDb();
-  const qOut = query(
+  const q = query(
     collection(db, "payments"),
-    where("fromEmail", "==", myEmail),
-    orderBy("date", "desc")
+    where("date", ">=", startISO),
+    where("date", "<", endISO)
   );
-  const qIn = query(
-    collection(db, "payments"),
-    where("toEmail", "==", myEmail),
-    orderBy("date", "desc")
-  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
 
-  let out = [],
-    inc = [];
-  const emit = () => onChange({ out, in: inc });
-
-  const u1 = onSnapshot(qOut, (snap) => {
-    out = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    emit();
-  });
-  const u2 = onSnapshot(qIn, (snap) => {
-    inc = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    emit();
-  });
-
-  return () => {
-    u1();
-    u2();
-  };
+/** Lấy payments theo tháng (1–12) */
+export async function listPaymentsByMonth(year, month1to12) {
+  const start = new Date(year, month1to12 - 1, 1);
+  const end = new Date(year, month1to12, 1);
+  return listPaymentsInRange(start.toISOString(), end.toISOString());
 }

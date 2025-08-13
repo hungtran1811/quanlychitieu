@@ -4,6 +4,7 @@ import * as Mine from "./pages/my-requests.js";
 import * as Debts from "./pages/debts.js";
 import * as PayDebt from "./pages/pay-debt.js";
 import * as AdminQueue from "./pages/admin-queue.js";
+import * as History from "./pages/history.js"; // NEW
 import * as Users from "./pages/users.js";
 
 const routes = {
@@ -13,6 +14,7 @@ const routes = {
   "#/debts": Debts,
   "#/pay-debt": PayDebt,
   "#/admin/queue": AdminQueue,
+  "#/history": History,
   "#/users": Users,
 };
 

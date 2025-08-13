@@ -311,3 +311,211 @@
 #admin-queue .aq-label {
     font-size: 13px
 }
+
+/* Filter group (history/users) */
+.filter-bar {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    margin: 8px 0 12px
+}
+
+.filter-bar .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px
+}
+
+.filter-bar input[type="month"],
+.filter-bar select {
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, .18);
+    background: rgba(255, 255, 255, .06);
+    color: #e7eef5;
+    min-width: 160px
+}
+
+.filter-bar button {
+    height: 40px
+}
+
+/* ===== Users ===== */
+#page-users .user-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+    margin-top: 8px
+}
+
+#page-users .user-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, .12);
+    background: rgba(255, 255, 255, .04);
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    cursor: pointer;
+    text-align: left;
+}
+
+#page-users .user-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, .28);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+}
+
+#page-users .avatar-lg {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, .14)
+}
+
+#page-users .user-info {
+    flex: 1 1 auto;
+    min-width: 0
+}
+
+#page-users .user-name {
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis
+}
+
+#page-users .user-email {
+    font-size: 12px;
+    color: #9fb0c2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis
+}
+
+#page-users .chev {
+    font-size: 20px;
+    opacity: .4;
+    transform: translateX(2px)
+}
+
+
+/* Tên user: to và sáng hơn */
+#page-users .user-name {
+    /* đậm hơn */
+    color: #f3f7ff;
+    /* sáng hơn */
+    line-height: 1.15;
+    letter-spacing: .1px;
+}
+
+/* Khi hover card thì sáng hẳn để dễ thấy */
+#page-users .user-card:hover .user-name {
+    color: #ffffff;
+}
+
+/* (tuỳ chọn) email nhỏ & dịu hơn để tên nổi bật */
+#page-users .user-email {
+    font-size: 12px;
+    color: #9fb0c2;
+}
+
+/* small stat cards (shared) */
+.stats {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 8px 0 12px
+}
+
+.stat-card {
+    min-width: 180px;
+    flex: 0 0 auto;
+    padding: 10px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, .12);
+    background: linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .03))
+}
+
+.stat-card .label {
+    font-size: 12px;
+    color: #9fb0c2;
+    margin-bottom: 4px
+}
+
+.stat-card .value {
+    font-size: 20px;
+    font-weight: 800
+}
+
+/* ===== History ===== */
+#page-history .filter-bar {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    margin: 4px 0 10px
+}
+
+#page-history .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px
+}
+
+#page-history input[type="month"],
+#page-history select {
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, .18);
+    background: rgba(255, 255, 255, .06);
+    color: #e7eef5;
+    min-width: 160px
+}
+
+#page-history .table-wrap {
+    overflow: auto;
+    border-radius: 12px
+}
+
+.table.sticky thead th {
+    position: sticky;
+    top: 0;
+    background: rgba(10, 14, 20, .85);
+    backdrop-filter: blur(8px)
+}
+
+.table-hover tbody tr {
+    transition: background .12s ease
+}
+
+.table-hover tbody tr:hover {
+    background: rgba(255, 255, 255, .06)
+}
+
+/* pills */
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700
+}
+
+.pill-exp {
+    background: rgba(0, 194, 168, .15);
+    color: #7af0df;
+    border: 1px solid rgba(0, 194, 168, .35)
+}
+
+.pill-pay {
+    background: rgba(79, 140, 255, .15);
+    color: #b8d3ff;
+    border: 1px solid rgba(79, 140, 255, .35)
+}
