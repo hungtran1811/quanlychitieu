@@ -29,6 +29,7 @@ export async function createExpenseRequest({ uid, payload }) {
 // Tạo yêu cầu thanh toán
 export async function createPaymentRequest({ uid, payload }) {
   const db = getDb();
+  // payload: { amount, toEmail, note?, entries?: number[] }
   return await addDoc(collection(db, "requests"), {
     type: "payment",
     status: "pending",

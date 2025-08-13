@@ -1,257 +1,206 @@
 import { currentUser } from "../auth.js";
-import { subscribeExpensesWithMe } from "../store/expenses.js";
+import { subscribeDebtsForUser } from "../store/ledger.js";
+import { subscribeUsersMap } from "../store/users.js";
 import { createPaymentRequest } from "../store/requests.js";
-import { splitEqual, normalizeGroup } from "../utils/calc.js";
 import { money, whenVN } from "../utils/format.js";
 
-let unsub = [];
-let token = 0;
+let unDebts = null,
+  unUsers = null;
 
 export async function render() {
   const u = currentUser();
-  if (!u) {
+  if (!u?.email) {
     alert("Bạn cần đăng nhập.");
     location.hash = "#/welcome";
     return;
   }
-  const root = document.getElementById("app-root");
-  if (!root) return;
-  unsub.forEach((fn) => fn());
-  unsub = [];
-  const t = ++token;
 
+  const root = document.getElementById("app-root");
   root.innerHTML = `
   <section class="card"><div class="inner">
-    <h2 style="margin:0 0 8px">Thanh toán nợ</h2>
-    <p class="muted" style="margin:0 0 10px">Chọn người bạn đang nợ, tick các khoản muốn thanh toán (admin duyệt). Số tiền tự cộng theo các khoản đã chọn.</p>
-
-    <div class="pay-toolbar">
-      <div class="combo">
-        <label class="muted small" for="creditor-input">Người nhận</label>
-        <input id="creditor-input" class="combo-input" type="text" placeholder="Nhập email để tìm…" autocomplete="off"/>
-        <div id="creditor-list" class="combo-list hidden"></div>
-      </div>
-
-      <div>
-        <label class="muted small">Số tiền</label>
-        <div id="amount-pill" class="amount-pill">0 ₫</div>
-      </div>
-
-      <div class="grow">
-        <label class="muted small" for="pay-note">Ghi chú (tuỳ chọn)</label>
-        <input id="pay-note" type="text" placeholder="Ví dụ: chuyển khoản"/>
-      </div>
-
-      <div class="align-end">
-        <button id="btn-submit" class="btn primary" disabled>Gửi yêu cầu</button>
-      </div>
-    </div>
-
-    <div id="hint" class="muted small" style="margin-top:6px">Chọn người nhận để hiện các khoản đang nợ và tick khoản muốn thanh toán.</div>
-
-    <h3 style="margin:14px 0 8px">Các khoản bạn nợ</h3>
-    <div id="debt-list" class="debt-list"><div class="debt-empty">Đang tải…</div></div>
+    <h2>Thanh toán nợ</h2>
+    <p class="muted" style="margin:6px 0 14px">
+      Chọn các khoản bạn đang nợ <em>(theo từng người)</em> → hệ thống sẽ tự cộng tổng và gửi <b>yêu cầu thanh toán</b> đến người đó (admin sẽ duyệt).
+    </p>
+    <div id="pay-groups" class="grid" style="gap:14px"></div>
+    <div class="muted small" style="margin-top:8px">Cập nhật realtime từ expenses/payments đã duyệt.</div>
   </div></section>`;
 
-  // handles
-  const $ = (id) => document.getElementById(id);
-  const input = $("creditor-input"),
-    list = $("creditor-list"),
-    pill = $("amount-pill"),
-    note = $("pay-note"),
-    btn = $("btn-submit"),
-    debtList = $("debt-list"),
-    hint = $("hint");
+  const wrap = document.getElementById("pay-groups");
 
-  // state
-  let withMe = [],
-    itemsAll = []; // expenses với tôi (payer != tôi) -> item nợ đơn lẻ
-  let creditors = []; // [{email,total}]
-  let selectedCreditor = ""; // email đang chọn
-  let selectedIds = new Set(); // tập id khoản được tick
-  let currentSum = 0;
+  let usersMap = { byEmail: new Map(), byUid: new Map() };
+  if (unUsers) unUsers();
+  unUsers = subscribeUsersMap((x) => {
+    usersMap = x;
+  });
 
-  // utilities
-  const show = (el) => el.classList.remove("hidden");
-  const hide = (el) => el.classList.add("hidden");
-  const updatePill = (n) => {
-    pill.textContent = money(n) + " ₫";
-    btn.disabled = !(selectedCreditor && n > 0);
+  const getName = (email) =>
+    usersMap.byEmail.get(String(email || "").toLowerCase())?.name ||
+    email?.split("@")[0] ||
+    email ||
+    "—";
+  const getPhoto = (email) =>
+    usersMap.byEmail.get(String(email || "").toLowerCase())?.photoURL || "";
+
+  const draw = (groups) => {
+    const entries = Array.from(groups.byPerson.entries())
+      .filter(([_, v]) => v.youOwe > 0)
+      .sort((a, b) => b[1].youOwe - a[1].youOwe);
+
+    if (!entries.length) {
+      wrap.innerHTML = `<div class="muted">Bạn không nợ ai cả. 🎉</div>`;
+      return;
+    }
+
+    wrap.innerHTML = entries
+      .map(([email, g], idx) => {
+        const nm = getName(email);
+        const photo = getPhoto(email);
+        const id = `p${idx}`;
+
+        // chỉ cho tick các mục dương (khoản bạn nợ); mục âm (đã thanh toán trước đó) hiển thị xám & disabled
+        const rows = (g.detailsYou || [])
+          .map((d, i) => {
+            const positive = d.amount > 0;
+            const disabled = positive ? "" : "disabled";
+            const cls = positive ? "" : 'style="opacity:.6"';
+            const when = d.date ? whenVN(d.date) : "—";
+            const type = d.kind === "payment" ? "Thanh toán" : "Khoản chi";
+            const effect = d.dir === "you->them" ? "Bạn → Họ" : "Họ → Bạn";
+            const amt = `${d.amount < 0 ? "-" : "+"} ${money(
+              Math.abs(d.amount)
+            )}`;
+            const cb = positive
+              ? `<input type="checkbox" class="sel" data-email="${email}" data-idx="${i}" />`
+              : `<input type="checkbox" disabled />`;
+            return `<tr ${cls}>
+          <td style="width:28px">${cb}</td>
+          <td>${when}</td><td>${type}</td><td class="small">${
+              d.note || ""
+            }</td><td class="small">${effect}</td>
+          <td style="text-align:right">${amt}</td>
+        </tr>`;
+          })
+          .join("");
+
+        return `
+      <section class="card"><div class="inner">
+        <div class="row" style="justify-content:space-between;gap:12px;margin-bottom:8px">
+          <div class="row" style="gap:10px">
+            <img class="avatar" src="${
+              photo ||
+              "data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22><rect width=%2240%22 height=%2240%22 rx=%2220%22 fill=%22%23666%22/></svg>"
+            }">
+            <div>
+              <div><strong>${nm}</strong></div>
+              <div class="muted small">${email}</div>
+            </div>
+          </div>
+          <div class="row" style="gap:6px">
+            <div class="muted small">Bạn đang nợ</div>
+            <div style="font-weight:800">${money(g.youOwe)}</div>
+          </div>
+        </div>
+
+        <table class="table small">
+          <thead><tr>
+            <th></th><th>Thời gian</th><th>Loại</th><th>Ghi chú</th><th>Ảnh hưởng</th><th style="text-align:right">Số tiền</th>
+          </tr></thead>
+          <tbody id="tb-${id}">
+            ${rows}
+          </tbody>
+        </table>
+
+        <div class="row" style="justify-content:space-between;margin-top:10px">
+          <div class="muted small">Đã chọn: <b id="picked-${id}">0</b> • Tổng thanh toán: <b id="sum-${id}">0</b></div>
+          <div class="row" style="gap:8px">
+            <input type="text" id="note-${id}" placeholder="Ghi chú chuyển khoản (tuỳ chọn)" style="min-width:260px">
+            <button class="btn primary" data-pay="${email}" data-id="${id}">Gửi yêu cầu thanh toán</button>
+          </div>
+        </div>
+      </div></section>`;
+      })
+      .join("");
   };
 
-  function computeDebtItems() {
-    // Từ expensesWithMe -> list các khoản tôi nợ từng expense, mỗi dòng = share của tôi
-    const me = (u.email || "").toLowerCase();
-    const out = [];
-    for (const e of withMe) {
-      const payer = (e.payerEmail || "").toLowerCase();
-      if (!payer || payer === me) continue;
-      const group = normalizeGroup(
-        e.participantsEmails || e.participantEmails || [],
-        payer
-      );
-      const { share } = splitEqual(+e.amount || 0, group.length);
-      out.push({
-        id: e.id, // id expense
-        payerEmail: payer,
-        date: e.date || e.createdAt?.toDate?.() || new Date().toISOString(),
-        note: e.note || e.payload?.note || "",
-        total: +e.amount || 0,
-        myShare: share,
-      });
-    }
-    itemsAll = out;
-    // creditors for combobox
-    const map = new Map();
-    for (const it of out)
-      map.set(it.payerEmail, (map.get(it.payerEmail) || 0) + it.myShare);
-    creditors = Array.from(map, ([email, total]) => ({ email, total })).sort(
-      (a, b) => b.total - a.total
-    );
-  }
+  // subscribe debts realtime
+  if (unDebts) unDebts();
+  unDebts = subscribeDebtsForUser(u.email, draw);
 
-  // render combobox list
-  function renderList(filter = "") {
-    const q = (filter || "").trim().toLowerCase();
-    const items = creditors
-      .filter((c) => !q || c.email.includes(q))
-      .slice(0, 12);
-    list.innerHTML = items.length
-      ? items
-          .map(
-            (c) =>
-              `<div class="combo-item" data-email="${
-                c.email
-              }"><span class="avatar-dot"></span><div>${
-                c.email
-              }</div><div class="meta">${money(c.total)}</div></div>`
-          )
-          .join("")
-      : `<div class="combo-empty">Không tìm thấy</div>`;
-    show(list);
-  }
-  function pickCreditor(email) {
-    selectedCreditor = email;
-    input.value = email || "";
-    hide(list);
-    note.value = "";
-    selectedIds.clear();
-    currentSum = 0;
-    updatePill(currentSum);
-    renderDebtsForCreditor();
-  }
+  // events: tick -> update sum; click pay -> create payment request
+  root.addEventListener("change", (e) => {
+    const sel = e.target.closest(".sel");
+    if (!sel) return;
+    const id = sel.closest("section.card")?.querySelector("[data-pay]")
+      ?.dataset?.id;
+    if (!id) return;
 
-  // render debts list (checkbox)
-  function renderDebtsForCreditor() {
-    if (!selectedCreditor) {
-      debtList.innerHTML = `<div class="debt-empty">Chưa chọn người nhận.</div>`;
-      hint.textContent = "Chọn người nhận để hiện các khoản nợ.";
-      return;
-    }
-    const rows = itemsAll.filter((x) => x.payerEmail === selectedCreditor);
-    if (!rows.length) {
-      debtList.innerHTML = `<div class="debt-empty">Không có khoản nợ nào với ${selectedCreditor}.</div>`;
-      hint.textContent = "";
-      return;
-    }
-    hint.textContent = `Bạn đang nợ ${selectedCreditor} tổng ${money(
-      rows.reduce((s, x) => s + x.myShare, 0)
-    )} (chọn khoản để thanh toán).`;
-    debtList.innerHTML = rows
-      .map(
-        (x) => `
-      <label class="debt-row">
-        <input type="checkbox" class="chk" data-id="${x.id}" data-amt="${
-          x.myShare
-        }"/>
-        <div>
-          <div class="debt-note">${x.note || "(Không ghi chú)"}</div>
-          <div class="debt-meta">${whenVN(new Date(x.date))} • Tổng ${money(
-          x.total
-        )} • Phần bạn ${money(x.myShare)}</div>
-        </div>
-        <div class="debt-share">${money(x.myShare)} ₫</div>
-      </label>
-    `
-      )
-      .join("");
+    // recompute sum for this group
+    const tbody = document.getElementById(`tb-${id}`);
+    const picked = [...tbody.querySelectorAll(".sel:checked")];
+    const sumEl = document.getElementById(`sum-${id}`);
+    const countEl = document.getElementById(`picked-${id}`);
 
-    // attach change listener
-    debtList.querySelectorAll(".chk").forEach((ch) => {
-      ch.addEventListener("change", () => {
-        const val = +ch.dataset.amt || 0;
-        if (ch.checked) {
-          selectedIds.add(ch.dataset.id);
-          currentSum += val;
-        } else {
-          selectedIds.delete(ch.dataset.id);
-          currentSum -= val;
-        }
-        if (currentSum < 0) currentSum = 0;
-        updatePill(currentSum);
-      });
+    // lấy amount từ cột cuối cùng (đã format ±) → chuyển về số
+    let sum = 0;
+    picked.forEach((cb) => {
+      const tr = cb.closest("tr");
+      const txt = tr.lastElementChild.textContent || "0";
+      const raw = parseInt(txt.replace(/[^\d-]/g, ""), 10) || 0;
+      sum += Math.abs(raw);
     });
-  }
-
-  // combobox events
-  input.addEventListener("focus", () => renderList(input.value));
-  input.addEventListener("input", () => renderList(input.value));
-  list.addEventListener("click", (e) => {
-    const item = e.target.closest(".combo-item");
-    if (!item) return;
-    pickCreditor(item.dataset.email);
+    sumEl.textContent = money(sum);
+    countEl.textContent = picked.length;
   });
-  document.addEventListener(
-    "click",
-    (e) => {
-      if (!e.target.closest(".combo")) hide(list);
-    },
-    { capture: true }
-  );
 
-  // subscribe realtime only expenses with me
-  unsub.push(
-    subscribeExpensesWithMe(u.email, (rows) => {
-      if (t !== token) return;
-      withMe = rows;
-      computeDebtItems();
-      // refresh UI base on current creditor
-      renderList(input.value);
-      renderDebtsForCreditor();
-    })
-  );
+  root.addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-pay]");
+    if (!btn) return;
+    const email = btn.dataset.pay;
+    const id = btn.dataset.id;
 
-  // submit
-  btn.addEventListener("click", async () => {
-    if (!selectedCreditor) return alert("Hãy chọn người nhận.");
-    if (!selectedIds.size)
-      return alert("Hãy tick ít nhất một khoản để thanh toán.");
+    const tbody = document.getElementById(`tb-${id}`);
+    const picked = [...tbody.querySelectorAll(".sel:checked")];
+    if (!picked.length) return alert("Chọn ít nhất một khoản để thanh toán.");
+
+    // cộng tổng lại giống ở trên
+    let sum = 0;
+    picked.forEach((cb) => {
+      const tr = cb.closest("tr");
+      const txt = tr.lastElementChild.textContent || "0";
+      const raw = parseInt(txt.replace(/[^\d-]/g, ""), 10) || 0;
+      sum += Math.abs(raw);
+    });
+
+    const note = (document.getElementById(`note-${id}`)?.value || "").trim();
 
     try {
       await createPaymentRequest({
-        uid: u.uid,
+        uid: currentUser().uid,
         payload: {
-          fromEmail: u.email,
-          toEmail: selectedCreditor,
-          amount: currentSum,
-          note: (note.value || "").trim(),
-          items: Array.from(selectedIds), // danh sách expenseId đã tick
+          amount: sum,
+          toEmail: email,
+          note,
+          entries: picked.map((cb) => Number(cb.dataset.idx)), // tham chiếu các dòng đã chọn (client-side index)
         },
       });
-      alert("Đã gửi yêu cầu thanh toán.");
-      selectedIds.clear();
-      currentSum = 0;
-      updatePill(0);
-      // giữ nguyên creditor, chỉ bỏ chọn mọi checkbox
-      debtList.querySelectorAll(".chk").forEach((ch) => (ch.checked = false));
-    } catch (e) {
-      console.error(e);
-      alert("Gửi yêu cầu thất bại: " + (e?.message || "Unknown"));
+      alert(`Đã gửi yêu cầu thanh toán ${money(sum)} đến ${email}.`);
+      // reset selections
+      picked.forEach((cb) => {
+        cb.checked = false;
+      });
+      document.getElementById(`sum-${id}`).textContent = "0";
+      document.getElementById(`picked-${id}`).textContent = "0";
+      document.getElementById(`note-${id}`).value = "";
+    } catch (err) {
+      console.error(err);
+      alert("Gửi yêu cầu thất bại: " + (err?.message || "Unknown"));
     }
   });
 }
 
-export function stopPayRealtime() {
-  unsub.forEach((fn) => fn());
-  unsub = [];
+export function stopPayDebtRealtime() {
+  if (unDebts) unDebts();
+  if (unUsers) unUsers();
+  unDebts = unUsers = null;
 }
