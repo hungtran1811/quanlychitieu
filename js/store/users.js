@@ -2,40 +2,46 @@ import { getDb } from "./firestore.js";
 import {
   collection,
   onSnapshot,
+  query,
+  orderBy,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-export function subscribeAllUsers(onChange) {
-  return onSnapshot(collection(getDb(), "users"), (snap) => {
-    const list = snap.docs
-      .map((d) => {
-        const x = d.data() || {};
-        return {
-          uid: d.id,
-          email: (x.email || "").trim(),
-          name: (x.displayName || "").trim(),
-          photoURL: x.photoURL || "",
-        };
-      })
-      .filter((u) => u.email);
-    onChange(list);
+/** Realtime: mảng user để hiển thị danh sách */
+export function subscribeAllUsers(cb) {
+  const db = getDb();
+  const q = query(collection(db, "users"), orderBy("displayName", "asc"));
+  return onSnapshot(q, (snap) => {
+    const rows = snap.docs.map((d) => {
+      const x = d.data() || {};
+      return {
+        id: d.id,
+        name: x.name || x.displayName || "",
+        email: x.email || "",
+        photoURL: x.photoURL || "",
+      };
+    });
+    cb(rows);
   });
 }
 
-export function subscribeUsersMap(onChange) {
-  return onSnapshot(collection(getDb(), "users"), (snap) => {
-    const byUid = new Map(),
-      byEmail = new Map();
+/** Realtime: Map nhanh (byEmail/byUid) để tra tên/ảnh */
+export function subscribeUsersMap(cb) {
+  const db = getDb();
+  const q = query(collection(db, "users"), orderBy("displayName", "asc"));
+  return onSnapshot(q, (snap) => {
+    const byEmail = new Map();
+    const byUid = new Map();
     snap.forEach((d) => {
       const x = d.data() || {};
-      const u = {
+      const rec = {
         uid: d.id,
-        email: (x.email || "").trim(),
-        name: (x.displayName || "").trim(),
+        name: x.name || x.displayName || "",
+        email: x.email || "",
         photoURL: x.photoURL || "",
       };
-      byUid.set(u.uid, u);
-      if (u.email) byEmail.set(u.email.toLowerCase(), u);
+      if (rec.email) byEmail.set(rec.email.toLowerCase(), rec);
+      byUid.set(rec.uid, rec);
     });
-    onChange({ byUid, byEmail });
+    cb({ byEmail, byUid });
   });
 }

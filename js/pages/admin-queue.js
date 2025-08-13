@@ -1,19 +1,20 @@
 import { currentUser } from "../auth.js";
+import { listRequestsAdmin, markRequestStatus } from "../store/requests.js";
+import { getDb } from "../store/firestore.js";
 import {
-  subscribeRequests,
-  approveRequest,
-  rejectRequest,
-} from "../store/requests.js";
+  addDoc,
+  collection,
+  serverTimestamp,
+} from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 import { subscribeUsersMap } from "../store/users.js";
 import { money, whenVN } from "../utils/format.js";
 
-let unReq = null,
-  unUsers = null;
+let users = { byEmail: new Map(), byUid: new Map() };
 
 export async function render() {
-  const u = currentUser();
-  if (!u) {
-    alert("Bạn cần đăng nhập.");
+  const me = currentUser();
+  if (!me) {
+    alert("Cần đăng nhập.");
     location.hash = "#/welcome";
     return;
   }
@@ -21,155 +22,141 @@ export async function render() {
   const root = document.getElementById("app-root");
   root.innerHTML = `
   <section class="card"><div class="inner">
-    <h2 style="margin:0 0 8px">Admin • Hàng đợi duyệt</h2>
-    <div class="row" style="gap:8px;margin:0 0 10px">
-      <label class="muted small">Trạng thái:</label>
-      <select id="f-status">
-        <option value="pending" selected>Pending</option>
+    <h2>Admin • Hàng đợi duyệt</h2>
+    <div class="filters">
+      <select id="f-status" class="select">
+        <option value="pending">Pending</option>
         <option value="approved">Approved</option>
         <option value="rejected">Rejected</option>
       </select>
-      <label class="muted small">Loại:</label>
-      <select id="f-type">
-        <option value="all" selected>Tất cả</option>
+      <select id="f-type" class="select">
+        <option value="all">Tất cả loại</option>
         <option value="expense">Expense</option>
         <option value="payment">Payment</option>
       </select>
+      <button id="btn-refresh" class="btn">Tải lại</button>
     </div>
-
-    <table class="table table-admin">
-      <thead><tr>
-        <th>Thời gian</th><th>Người tạo</th><th>Loại</th><th>Chi tiết</th><th>Số tiền</th><th>Trạng thái</th><th>Action</th>
-      </tr></thead>
-      <tbody id="tbody-admin"><tr><td colspan="7" class="muted">Đang tải…</td></tr></tbody>
-    </table>
+    <table class="table"><thead>
+      <tr><th>Thời gian</th><th>Người tạo</th><th>Loại</th><th>Chi tiết</th><th>Số tiền</th><th>Trạng thái</th><th>Action</th></tr>
+    </thead><tbody id="tb"><tr><td colspan="7" class="muted">Đang tải…</td></tr></tbody></table>
   </div></section>`;
 
-  const $ = (id) => document.getElementById(id);
-  const tbody = $("tbody-admin");
-  const fStatus = $("f-status"),
-    fType = $("f-type");
+  const fStatus = document.getElementById("f-status");
+  const fType = document.getElementById("f-type");
+  const tb = document.getElementById("tb");
+  document.getElementById("btn-refresh").addEventListener("click", load);
 
-  let cacheReq = [];
-  let users = { byUid: new Map(), byEmail: new Map() };
+  subscribeUsersMap((x) => {
+    users = x;
+  });
+  await load();
 
-  // render rows using cache + users map
-  const draw = () => {
-    if (!cacheReq.length) {
-      tbody.innerHTML = `<tr><td colspan="7" class="muted">Không có dữ liệu.</td></tr>`;
+  async function load() {
+    const rows = await listRequestsAdmin({
+      status: fStatus.value,
+      type: fType.value,
+      take: 80,
+    });
+    if (!rows.length) {
+      tb.innerHTML = `<tr><td colspan="7" class="muted">Không có yêu cầu.</td></tr>`;
       return;
     }
-    tbody.innerHTML = cacheReq
+    tb.innerHTML = rows
       .map((r) => {
-        const d =
-          r.createdAt?.toDate?.() || new Date(r.payload?.date || Date.now());
+        const when = r.createdAt?.toDate?.() || new Date();
+        const by =
+          users.byUid.get(r.requestedBy)?.name ||
+          r.requestedBy?.slice(0, 6) ||
+          "—";
         const note = r.payload?.note || "";
-        const amt = +r.payload?.amount || 0;
-        const usr = users.byUid.get(r.requestedBy);
-        const name = usr?.name || "(không tên)";
-        const email = usr?.email || "";
-        const photo = usr?.photoURL || "";
-        const statusClass =
-          r.status === "approved"
-            ? "status-approved"
-            : r.status === "rejected"
-            ? "status-rejected"
-            : "status-pending";
-        const actions =
-          r.status === "pending"
-            ? `<button class="btn" data-approve="${r.id}">Approve</button>
-           <button class="btn" data-reject="${r.id}">Reject</button>`
-            : `<span class="status-badge ${statusClass}">${r.status}</span>`;
-        return `<tr data-id="${r.id}">
-        <td>${whenVN(d)}</td>
-        <td>
-          <div class="creator">
-            <img class="avatar" src="${
-              photo ||
-              "data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2228%22 height=%2228%22><rect width=%2228%22 height=%2228%22 rx=%2214%22 fill=%22%23666%22/></svg>"
-            }" alt="">
-            <div><div class="name">${name}</div><div class="email">${email}</div></div>
-          </div>
-        </td>
+        const amount = money(r.payload?.amount || 0);
+        const st = r.status;
+        const badge = `<span class="badge ${st}">${st}</span>`;
+        const action =
+          st === "pending"
+            ? `<div class="row"><button class="btn" data-approve="${r.id}">Approve</button><button class="btn" data-reject="${r.id}">Reject</button></div>`
+            : `<span class="muted small">—</span>`;
+        return `<tr>
+        <td>${whenVN(when)}</td>
+        <td>${by}</td>
         <td>${r.type}</td>
         <td class="small">${note}</td>
-        <td><span class="pill-amt">${money(amt)}</span></td>
-        <td>${
-          r.status === "pending"
-            ? `<span class="status-badge status-pending">pending</span>`
-            : r.status === "approved"
-            ? `<span class="status-badge status-approved">approved</span>`
-            : `<span class="status-badge status-rejected">rejected</span>`
-        }
-        </td>
-        <td>${actions}</td>
+        <td>${amount}</td>
+        <td>${badge}</td>
+        <td>${action}</td>
       </tr>`;
       })
       .join("");
-  };
-
-  // attach subscriptions
-  const mount = () => {
-    if (unReq) {
-      unReq();
-      unReq = null;
-    }
-    unReq = subscribeRequests(
-      { status: fStatus.value, type: fType.value, limitN: 100 },
-      (rows) => {
-        cacheReq = rows;
-        draw();
-      }
-    );
-  };
-  if (unUsers) {
-    unUsers();
   }
-  unUsers = subscribeUsersMap((map) => {
-    users = map;
-    draw();
-  });
 
-  mount();
-  fStatus.addEventListener("change", mount);
-  fType.addEventListener("change", mount);
+  // approve / reject
+  tb.addEventListener("click", async (e) => {
+    const a = e.target.closest("[data-approve]");
+    const r = e.target.closest("[data-reject]");
+    if (!a && !r) return;
+    const id = (a || r).dataset.approve || (a || r).dataset.reject;
+    const row = (
+      await listRequestsAdmin({ status: "pending", type: "all", take: 200 })
+    ).find((x) => x.id === id);
+    if (!row) return alert("Không tìm thấy request.");
 
-  // actions
-  tbody.addEventListener("click", async (e) => {
-    const id = e.target?.dataset?.approve || e.target?.dataset?.reject;
-    if (!id) return;
-    const req = cacheReq.find((x) => x.id === id);
-    if (!req) return;
-
-    if (e.target.dataset.approve) {
-      if (
-        !confirm(
-          `Duyệt yêu cầu ${req.type} • ${money(req?.payload?.amount || 0)}?`
-        )
-      )
-        return;
+    if (a) {
+      // approve
       try {
-        await approveRequest({ req, adminUid: u.uid });
-        alert("Đã approve & ghi sổ.");
+        await approveToMain(row, me.uid);
+        await markRequestStatus(row.id, {
+          status: "approved",
+          adminUid: me.uid,
+        });
+        alert("Approved.");
+        await load();
       } catch (err) {
         console.error(err);
-        alert("Approve thất bại: " + (err?.message || "Unknown"));
+        alert("Approve thất bại: " + (err?.message || ""));
       }
-    } else {
-      const reason = prompt("Lý do từ chối? (tuỳ chọn)", "");
-      try {
-        await rejectRequest({ reqId: id, reason, adminUid: u.uid });
-        alert("Đã reject.");
-      } catch (err) {
-        console.error(err);
-        alert("Reject thất bại: " + (err?.message || "Unknown"));
-      }
+    }
+    if (r) {
+      // reject
+      const note = prompt("Lý do từ chối (tuỳ chọn):", "");
+      await markRequestStatus(row.id, {
+        status: "rejected",
+        note,
+        adminUid: me.uid,
+      });
+      await load();
     }
   });
 }
 
-export function stopAdminRealtime() {
-  if (unReq) unReq();
-  if (unUsers) unUsers();
-  unReq = unUsers = null;
+/* ghi vào collections chính khi approve */
+async function approveToMain(req, adminUid) {
+  const db = getDb();
+  if (req.type === "expense") {
+    const p = req.payload || {};
+    await addDoc(collection(db, "expenses"), {
+      amount: +p.amount || 0,
+      note: p.note || "",
+      date: p.date || new Date().toISOString(),
+      payerEmail: p.payerEmail || "",
+      participantsEmails: Array.isArray(p.participantEmails)
+        ? p.participantEmails
+        : p.participantsEmails || [],
+      approvedAt: serverTimestamp(),
+      approvedBy: adminUid,
+    });
+    return;
+  }
+  if (req.type === "payment") {
+    const p = req.payload || {};
+    await addDoc(collection(db, "payments"), {
+      amount: +p.amount || 0,
+      note: p.note || "",
+      date: new Date().toISOString(),
+      fromEmail:
+        req._fromEmail || null || null /* không cần — chỉ lưu tối thiểu */,
+      toEmail: p.toEmail || "",
+      approvedAt: serverTimestamp(),
+      approvedBy: adminUid,
+    });
+  }
 }

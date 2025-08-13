@@ -3,40 +3,73 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ExpenseApp • Phase 1</title>
+    <meta name="theme-color" content="#0b0f14" />
+    <title>ExpenseApp • Phase 6</title>
+    <meta
+      name="description"
+      content="ExpenseApp – Quản lý chi tiêu nội bộ • Firebase Hosting, Auth, Firestore."
+    />
+
+    <!-- Fonts (optional) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Styles -->
     <link rel="stylesheet" href="assets/css/base.css" />
     <link rel="stylesheet" href="assets/css/components.css" />
   </head>
   <body data-auth="guest" data-admin="0">
+    <a
+      href="#app-root"
+      style="
+        position: absolute;
+        left: -9999px;
+        top: auto;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+      "
+      >Bỏ qua điều hướng</a
+    >
+
+    <!-- Header / Navbar -->
     <header class="nav">
       <div class="brand">
-        <div class="logo">₫</div>
+        <div class="logo" aria-hidden>₫</div>
         <div>
           <strong>ExpenseApp</strong>
-          <div class="muted small">Phase 1 • Auth + Requests</div>
+          <div class="muted small">Firebase • Auth • Firestore</div>
         </div>
       </div>
-      <nav class="row">
+      <nav class="row" aria-label="Điều hướng chính">
         <span id="admin-badge" class="admin-badge hidden">Admin</span>
 
-        <!-- NEW: admin queue -->
-        <button data-link="#/admin/queue" class="btn" data-admin-only>
+        <!-- App routes (hash) -->
+        <button class="btn" data-link="#/welcome">Trang chào</button>
+        <button class="btn" data-link="#/add" data-auth-required>
+          Thêm khoản chi
+        </button>
+        <button class="btn" data-link="#/debts" data-auth-required>
+          Bảng nợ
+        </button>
+        <button class="btn" data-link="#/pay-debt" data-auth-required>
+          Thanh toán nợ
+        </button>
+        <button class="btn" data-link="#/mine" data-auth-required>
+          Yêu cầu của tôi
+        </button>
+        <button class="btn" data-link="#/users" data-auth-required>
+          Thành viên
+        </button>
+        <button class="btn" data-link="#/admin/queue" data-admin-only>
           Admin
         </button>
 
-        <button data-link="#/welcome" class="btn">Trang chào</button>
-        <button data-link="#/add" class="btn" data-auth-required>
-          Thêm khoản chi
-        </button>
-        <button data-link="#/mine" class="btn" data-auth-required>
-          Yêu cầu của tôi
-        </button>
-        <button data-link="#/debts" class="btn" data-auth-required>
-          Bảng nợ
-        </button>
-        <button data-link="#/pay" class="btn" data-auth-required>
-          Thanh toán nợ
-        </button>
+        <!-- Auth actions -->
         <button id="btn-login" class="btn primary">Đăng nhập Google</button>
         <button id="btn-logout" class="btn hidden" data-auth-required>
           Đăng xuất
@@ -44,11 +77,13 @@
       </nav>
     </header>
 
-    <main id="app-root" class="container"></main>
+    <!-- Main outlet -->
+    <main id="app-root" class="container" role="main"></main>
 
-    <footer class="footer">
-      <div class="userbox">
-        <img id="user-photo" class="avatar" alt="avatar" />
+    <!-- Footer / user info -->
+    <footer class="footer" role="contentinfo">
+      <div class="userbox" aria-live="polite">
+        <img id="user-photo" class="avatar" alt="Ảnh người dùng" />
         <div>
           <div><strong id="user-name">Khách</strong></div>
           <div class="muted small">
@@ -58,6 +93,13 @@
       </div>
     </footer>
 
+    <noscript>
+      <div style="margin: 12px; color: #ffb86b; text-align: center">
+        Trình duyệt cần bật JavaScript để sử dụng ứng dụng.
+      </div>
+    </noscript>
+
+    <!-- App entry -->
     <script type="module" src="js/app.js"></script>
   </body>
 </html>

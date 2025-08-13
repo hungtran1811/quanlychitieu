@@ -9,10 +9,11 @@ import {
 
 /**
  * Realtime tính nợ theo từng người cho 1 email.
- * cb({ byPerson: Map(email -> { youOwe, theyOwe, detailsYou:[], detailsThey:[] }),
+ * opts: { start?:Date, end?:Date } dùng để lọc chi tiết theo thời gian (client filter).
+ * cb({ byPerson: Map(email -> { youOwe, theyOwe, detailsYou[], detailsThey[] }),
  *      totals: { youOwe, theyOwe, net }, at: Date })
  */
-export function subscribeDebtsForUser(myEmail, cb) {
+export function subscribeDebtsForUser(myEmail, cb, opts = {}) {
   const db = getDb();
 
   const qEPayer = query(
@@ -40,31 +41,35 @@ export function subscribeDebtsForUser(myEmail, cb) {
     EPart = [],
     POut = [],
     PIn = [];
+  const inRange = (d) => {
+    if (!opts.start && !opts.end) return true;
+    const t = +new Date(d || 0);
+    if (opts.start && t < +opts.start) return false;
+    if (opts.end && t > +opts.end) return false;
+    return true;
+  };
 
   const recompute = () => {
     const byPerson = new Map();
     const ensure = (email) => {
-      if (!byPerson.has(email)) {
+      if (!byPerson.has(email))
         byPerson.set(email, {
           youOwe: 0,
           theyOwe: 0,
           detailsYou: [],
           detailsThey: [],
         });
-      }
       return byPerson.get(email);
     };
 
-    // 1) Mình là payer: người khác nợ mình (ONLY detailsThey)
     for (const e of EPayer) {
-      const amount = +e.amount || 0;
+      if (!inRange(e.date || e.approvedAt)) continue;
       const members = Array.isArray(e.participantsEmails)
         ? e.participantsEmails
         : [];
       if (!members.length) continue;
-      const share = amount / members.length;
-      const others = members.filter((x) => x && x !== myEmail);
-      for (const p of others) {
+      const share = (+e.amount || 0) / members.length;
+      for (const p of members.filter((x) => x && x !== myEmail)) {
         const row = ensure(p);
         row.theyOwe += share;
         row.detailsThey.push({
@@ -76,16 +81,14 @@ export function subscribeDebtsForUser(myEmail, cb) {
         });
       }
     }
-
-    // 2) Mình là participant (payer khác mình): mình nợ payer (ONLY detailsYou)
     for (const e of EPart) {
-      if (!e || e.payerEmail === myEmail) continue;
-      const amount = +e.amount || 0;
+      if (e?.payerEmail === myEmail) continue;
+      if (!inRange(e.date || e.approvedAt)) continue;
       const members = Array.isArray(e.participantsEmails)
         ? e.participantsEmails
         : [];
       if (!members.length) continue;
-      const share = amount / members.length;
+      const share = (+e.amount || 0) / members.length;
       const row = ensure(e.payerEmail);
       row.youOwe += share;
       row.detailsYou.push({
@@ -96,12 +99,11 @@ export function subscribeDebtsForUser(myEmail, cb) {
         date: e.date || e.approvedAt || null,
       });
     }
-
-    // 3) Payments mình gửi cho họ: giảm phần mình nợ họ (ONLY detailsYou)
     for (const p of POut) {
-      const amt = +p.amount || 0;
+      if (!inRange(p.date || p.approvedAt)) continue;
       const row = ensure(p.toEmail);
-      row.youOwe -= amt; // trừ nợ
+      const amt = +p.amount || 0;
+      row.youOwe -= amt;
       row.detailsYou.push({
         kind: "payment",
         dir: "you->them",
@@ -110,12 +112,11 @@ export function subscribeDebtsForUser(myEmail, cb) {
         date: p.date || p.approvedAt || null,
       });
     }
-
-    // 4) Payments họ gửi cho mình: giảm phần họ nợ mình (ONLY detailsThey)
     for (const p of PIn) {
-      const amt = +p.amount || 0;
+      if (!inRange(p.date || p.approvedAt)) continue;
       const row = ensure(p.fromEmail);
-      row.theyOwe -= amt; // trừ nợ
+      const amt = +p.amount || 0;
+      row.theyOwe -= amt;
       row.detailsThey.push({
         kind: "payment",
         dir: "them->you",
@@ -125,21 +126,16 @@ export function subscribeDebtsForUser(myEmail, cb) {
       });
     }
 
-    // Chuẩn hoá + tổng
     const totals = { youOwe: 0, theyOwe: 0, net: 0 };
     for (const v of byPerson.values()) {
-      // gom chi tiết theo thời gian
       v.detailsYou.sort(
         (a, b) => new Date(b.date || 0) - new Date(a.date || 0)
       );
       v.detailsThey.sort(
         (a, b) => new Date(b.date || 0) - new Date(a.date || 0)
       );
-
-      // clamp về >= 0 để không hiện số âm
       v.youOwe = Math.max(0, Math.round(v.youOwe));
       v.theyOwe = Math.max(0, Math.round(v.theyOwe));
-
       totals.youOwe += v.youOwe;
       totals.theyOwe += v.theyOwe;
     }

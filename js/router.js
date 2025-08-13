@@ -1,21 +1,19 @@
 import * as Welcome from "./pages/welcome.js";
 import * as Add from "./pages/add-expense.js";
 import * as Mine from "./pages/my-requests.js";
-import * as Dash from "./pages/my-dashboard.js"; // skeleton
-import * as Pay from "./pages/pay-debt.js"; // skeleton
-import * as AdminQueue from "./pages/admin-queue.js"; // skeleton
-import * as AdminView from "./pages/admin-overview.js"; // skeleton
 import * as Debts from "./pages/debts.js";
+import * as PayDebt from "./pages/pay-debt.js";
+import * as AdminQueue from "./pages/admin-queue.js";
+import * as Users from "./pages/users.js";
 
 const routes = {
   "#/welcome": Welcome,
   "#/add": Add,
   "#/mine": Mine,
-  "#/dashboard": Dash,
-  "#/pay": Pay,
-  "#/admin/queue": AdminQueue,
-  "#/admin/overview": AdminView,
   "#/debts": Debts,
+  "#/pay-debt": PayDebt,
+  "#/admin/queue": AdminQueue,
+  "#/users": Users,
 };
 
 // Guard: các route yêu cầu đăng nhập
