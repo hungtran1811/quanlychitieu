@@ -18,19 +18,21 @@
       </div>
       <nav class="row">
         <span id="admin-badge" class="admin-badge hidden">Admin</span>
+
+        <!-- NEW: admin queue -->
+        <button data-link="#/admin/queue" class="btn" data-admin-only>
+          Admin
+        </button>
+
         <button data-link="#/welcome" class="btn">Trang chào</button>
         <button data-link="#/add" class="btn" data-auth-required>
           Thêm khoản chi
         </button>
-        <button data-link="#/dashboard" class="btn" data-auth-required>
-          Bảng nợ
-        </button>
-        <button data-link="#/pay" class="btn" data-auth-required>
-          Thanh toán nợ
-        </button>
-
         <button data-link="#/mine" class="btn" data-auth-required>
           Yêu cầu của tôi
+        </button>
+        <button data-link="#/dashboard" class="btn" data-auth-required>
+          Bảng nợ
         </button>
         <button id="btn-login" class="btn primary">Đăng nhập Google</button>
         <button id="btn-logout" class="btn hidden" data-auth-required>

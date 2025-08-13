@@ -1,4 +1,4 @@
-/* Table (giữ nguyên nếu đã có) */
+/* Table & Toast */
 .table {
     width: 100%;
     border-collapse: separate;
@@ -35,7 +35,7 @@
     box-shadow: 0 12px 30px rgba(0, 0, 0, .25)
 }
 
-/* ── Email suggest: làm nổi bật + cursor tay ─────────────────────── */
+/* ===== Email suggest chips ===== */
 .chipbox {
     display: flex;
     flex-wrap: wrap;
@@ -46,6 +46,7 @@
     border: 1px solid rgba(255, 255, 255, .16);
     background: linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .03));
     box-shadow: 0 16px 40px rgba(0, 0, 0, .35);
+    z-index: 50;
 }
 
 .chip {
@@ -54,12 +55,11 @@
     gap: 6px;
     padding: 8px 12px;
     border-radius: 999px;
+    user-select: none;
     background: rgba(255, 255, 255, .10);
     border: 1px solid rgba(255, 255, 255, .18);
     font-size: 12px;
-    user-select: none;
     cursor: pointer;
-    /* ← con trỏ tay */
     transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
 }
 
@@ -82,5 +82,3 @@
 .hidden {
     display: none !important
 }
-
-/* nếu chưa có */

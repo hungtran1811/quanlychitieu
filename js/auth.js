@@ -9,9 +9,8 @@ import {
 import {
   doc,
   setDoc,
-  serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
-import { getAuthInst, getDb } from "./store/firestore.js";
+import { getAuthInst, getDb, ts } from "./store/firestore.js";
 import { ADMIN_UID } from "./config.js";
 
 const subscribers = new Set();
@@ -22,6 +21,8 @@ export function onAuthChanges(cb) {
 (async () => {
   const auth = getAuthInst();
   await setPersistence(auth, browserLocalPersistence);
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
 
   onAuthStateChanged(auth, async (user) => {
     // Upsert users/{uid} để feed gợi ý email
@@ -33,7 +34,7 @@ export function onAuthChanges(cb) {
             email: user.email || "",
             displayName: user.displayName || "",
             photoURL: user.photoURL || "",
-            updatedAt: serverTimestamp(),
+            updatedAt: ts(),
           },
           { merge: true }
         );

@@ -1,12 +1,12 @@
 import { currentUser } from "../auth.js";
 import { createExpenseRequest } from "../store/requests.js";
+import { subscribeAllUsers } from "../store/users.js";
 import { money, ymd } from "../utils/format.js";
 import { toast } from "../utils/toast.js";
-import { subscribeAllUsers } from "../store/users.js";
 
-let _unsubUsers = null; // listener realtime users
-let _usersCache = []; // [{email,name}]
-let _token = 0; // tránh leak khi re-render
+let _unsubUsers = null;
+let _usersCache = [];
+let _token = 0;
 
 export function render() {
   const root = document.getElementById("app-root");
@@ -40,7 +40,7 @@ export function render() {
     </form>
   </div></section>`;
 
-  // ---- Handles
+  // handles
   const form = document.getElementById("form-expense");
   const fDate = document.getElementById("f-date");
   const fAmount = document.getElementById("f-amount");
@@ -51,11 +51,11 @@ export function render() {
   const boxPart = document.getElementById("sugg-participants");
   const boxPayer = document.getElementById("sugg-payer");
 
-  // Prefill payer = email của bạn
+  // default payer = current user email
   const u = currentUser();
   if (u?.email && !fPayer.value) fPayer.value = u.email;
 
-  // ---- Chip suggest logic
+  // realtime users for chip
   if (_unsubUsers) {
     _unsubUsers();
     _unsubUsers = null;
@@ -66,7 +66,6 @@ export function render() {
   });
 
   function renderChips(box, q = "") {
-    if (token !== _token) return;
     const query = (q || "").trim().toLowerCase();
     const items = _usersCache
       .filter(
@@ -86,15 +85,13 @@ export function render() {
       .join("");
     box.classList.toggle("hidden", items.length === 0);
   }
-  function hideBoxes() {
+  const hideBoxes = () => {
     boxPart.classList.add("hidden");
     boxPayer.classList.add("hidden");
-  }
+  };
 
-  // participants: gõ -> lọc theo token cuối; click -> thêm vào danh sách, có dấu phẩy
-  fParticipants.addEventListener("focus", () => {
-    renderChips(boxPart, "");
-  });
+  // participants: gõ theo token cuối; click -> push vào list
+  fParticipants.addEventListener("focus", () => renderChips(boxPart, ""));
   fParticipants.addEventListener("input", () => {
     const tokenTxt = fParticipants.value.split(",").slice(-1)[0].trim();
     renderChips(boxPart, tokenTxt);
@@ -112,13 +109,9 @@ export function render() {
     hideBoxes();
   });
 
-  // payer: gõ -> lọc theo toàn chuỗi; click -> gán 1 email
-  fPayer.addEventListener("focus", () => {
-    renderChips(boxPayer, "");
-  });
-  fPayer.addEventListener("input", () => {
-    renderChips(boxPayer, fPayer.value);
-  });
+  // payer: click -> set 1 email
+  fPayer.addEventListener("focus", () => renderChips(boxPayer, ""));
+  fPayer.addEventListener("input", () => renderChips(boxPayer, fPayer.value));
   boxPayer.addEventListener("click", (e) => {
     const chip = e.target.closest(".chip");
     if (!chip) return;
@@ -126,7 +119,6 @@ export function render() {
     hideBoxes();
   });
 
-  // Ẩn gợi ý khi click ra ngoài
   document.addEventListener(
     "click",
     (e) => {
@@ -141,7 +133,7 @@ export function render() {
     { capture: true }
   );
 
-  // ---- Submit
+  // submit
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const user = currentUser();
@@ -161,14 +153,13 @@ export function render() {
       payerEmail: (fPayer.value || "").trim() || user.email || "",
       splitMethod: "equal",
     };
-
     try {
       const ref = await createExpenseRequest({ uid: user.uid, payload });
       reqStatus.textContent = `Đã gửi! Mã yêu cầu: ${ref.id}`;
       toast(`Đã gửi yêu cầu ${money(amount)}₫`);
       form.reset();
       fDate.value = ymd(Date.now());
-      if (user?.email) fPayer.value = user.email; // giữ mặc định
+      if (user?.email) fPayer.value = user.email;
       hideBoxes();
     } catch (err) {
       console.error(err);
