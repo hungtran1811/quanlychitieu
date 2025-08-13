@@ -4,9 +4,11 @@ import {
   approveRequest,
   rejectRequest,
 } from "../store/requests.js";
+import { subscribeUsersMap } from "../store/users.js";
 import { money, whenVN } from "../utils/format.js";
 
-let _unsub = null;
+let unReq = null,
+  unUsers = null;
 
 export async function render() {
   const u = currentUser();
@@ -34,7 +36,8 @@ export async function render() {
         <option value="payment">Payment</option>
       </select>
     </div>
-    <table class="table">
+
+    <table class="table table-admin">
       <thead><tr>
         <th>Thời gian</th><th>Người tạo</th><th>Loại</th><th>Chi tiết</th><th>Số tiền</th><th>Trạng thái</th><th>Action</th>
       </tr></thead>
@@ -44,104 +47,98 @@ export async function render() {
 
   const $ = (id) => document.getElementById(id);
   const tbody = $("tbody-admin");
-  const fStatus = $("f-status");
-  const fType = $("f-type");
+  const fStatus = $("f-status"),
+    fType = $("f-type");
 
-  function mount(status, type) {
-    if (_unsub) {
-      _unsub();
-      _unsub = null;
+  let cacheReq = [];
+  let users = { byUid: new Map(), byEmail: new Map() };
+
+  // render rows using cache + users map
+  const draw = () => {
+    if (!cacheReq.length) {
+      tbody.innerHTML = `<tr><td colspan="7" class="muted">Không có dữ liệu.</td></tr>`;
+      return;
     }
-    _unsub = subscribeRequests({ status, type, limitN: 100 }, (rows) => {
-      if (!rows.length) {
-        tbody.innerHTML = `<tr><td colspan="7" class="muted">Không có dữ liệu.</td></tr>`;
-        return;
-      }
-      tbody.innerHTML = rows
-        .map((r) => {
-          const d =
-            r.createdAt?.toDate?.() || new Date(r.payload?.date || Date.now());
-          const note = r.payload?.note || "";
-          const amt = r.payload?.amount || 0;
-          const badge = r.status;
-          const actions =
-            r.status === "pending"
-              ? `<button class="btn" data-approve="${r.id}">Approve</button>
-             <button class="btn" data-reject="${r.id}">Reject</button>`
-              : `<span class="muted small">${badge}</span>`;
-          return `<tr data-id="${r.id}">
-          <td>${whenVN(d)}</td>
-          <td class="small">${r.requestedBy}</td>
-          <td>${r.type}</td>
-          <td class="small">${note}</td>
-          <td>${money(amt)}</td>
-          <td>${r.status}</td>
-          <td>${actions}</td>
-        </tr>`;
-        })
-        .join("");
-    });
-  }
-
-  // init and events
-  mount(fStatus.value, fType.value);
-  fStatus.addEventListener("change", () => mount(fStatus.value, fType.value));
-  fType.addEventListener("change", () => mount(fStatus.value, fType.value));
-
-  tbody.addEventListener("click", async (e) => {
-    const btn = e.target.closest("button");
-    if (!btn) return;
-    const tr = btn.closest("tr");
-    const id = tr?.dataset?.id;
-    if (!id) return;
-
-    // reconstruct minimal req object from row (we need full req for approve)
-    // Fetching full request again would be ideal; nhưng ta đã có đủ info trong subscribeRequests.
-    // Đơn giản: lấy từ DOM list snapshot lưu trong closure.
-  });
-
-  // Lưu cache hàng hiện tại để lấy full object khi click
-  let _cache = [];
-  if (_unsub) {
-    _unsub();
-  }
-  _unsub = subscribeRequests(
-    { status: fStatus.value, type: fType.value, limitN: 100 },
-    (rows) => {
-      _cache = rows;
-      if (!rows.length) {
-        tbody.innerHTML = `<tr><td colspan="7" class="muted">Không có dữ liệu.</td></tr>`;
-        return;
-      }
-      tbody.innerHTML = rows
-        .map((r) => {
-          const d =
-            r.createdAt?.toDate?.() || new Date(r.payload?.date || Date.now());
-          const note = r.payload?.note || "";
-          const amt = r.payload?.amount || 0;
-          const actions =
-            r.status === "pending"
-              ? `<button class="btn" data-approve="${r.id}">Approve</button>
+    tbody.innerHTML = cacheReq
+      .map((r) => {
+        const d =
+          r.createdAt?.toDate?.() || new Date(r.payload?.date || Date.now());
+        const note = r.payload?.note || "";
+        const amt = +r.payload?.amount || 0;
+        const usr = users.byUid.get(r.requestedBy);
+        const name = usr?.name || "(không tên)";
+        const email = usr?.email || "";
+        const photo = usr?.photoURL || "";
+        const statusClass =
+          r.status === "approved"
+            ? "status-approved"
+            : r.status === "rejected"
+            ? "status-rejected"
+            : "status-pending";
+        const actions =
+          r.status === "pending"
+            ? `<button class="btn" data-approve="${r.id}">Approve</button>
            <button class="btn" data-reject="${r.id}">Reject</button>`
-              : `<span class="muted small">${r.status}</span>`;
-          return `<tr data-id="${r.id}">
+            : `<span class="status-badge ${statusClass}">${r.status}</span>`;
+        return `<tr data-id="${r.id}">
         <td>${whenVN(d)}</td>
-        <td class="small">${r.requestedBy}</td>
+        <td>
+          <div class="creator">
+            <img class="avatar" src="${
+              photo ||
+              "data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2228%22 height=%2228%22><rect width=%2228%22 height=%2228%22 rx=%2214%22 fill=%22%23666%22/></svg>"
+            }" alt="">
+            <div><div class="name">${name}</div><div class="email">${email}</div></div>
+          </div>
+        </td>
         <td>${r.type}</td>
         <td class="small">${note}</td>
-        <td>${money(amt)}</td>
-        <td>${r.status}</td>
+        <td><span class="pill-amt">${money(amt)}</span></td>
+        <td>${
+          r.status === "pending"
+            ? `<span class="status-badge status-pending">pending</span>`
+            : r.status === "approved"
+            ? `<span class="status-badge status-approved">approved</span>`
+            : `<span class="status-badge status-rejected">rejected</span>`
+        }
+        </td>
         <td>${actions}</td>
       </tr>`;
-        })
-        .join("");
-    }
-  );
+      })
+      .join("");
+  };
 
+  // attach subscriptions
+  const mount = () => {
+    if (unReq) {
+      unReq();
+      unReq = null;
+    }
+    unReq = subscribeRequests(
+      { status: fStatus.value, type: fType.value, limitN: 100 },
+      (rows) => {
+        cacheReq = rows;
+        draw();
+      }
+    );
+  };
+  if (unUsers) {
+    unUsers();
+  }
+  unUsers = subscribeUsersMap((map) => {
+    users = map;
+    draw();
+  });
+
+  mount();
+  fStatus.addEventListener("change", mount);
+  fType.addEventListener("change", mount);
+
+  // actions
   tbody.addEventListener("click", async (e) => {
     const id = e.target?.dataset?.approve || e.target?.dataset?.reject;
     if (!id) return;
-    const req = _cache.find((x) => x.id === id);
+    const req = cacheReq.find((x) => x.id === id);
     if (!req) return;
 
     if (e.target.dataset.approve) {
@@ -172,8 +169,7 @@ export async function render() {
 }
 
 export function stopAdminRealtime() {
-  if (_unsub) {
-    _unsub();
-    _unsub = null;
-  }
+  if (unReq) unReq();
+  if (unUsers) unUsers();
+  unReq = unUsers = null;
 }

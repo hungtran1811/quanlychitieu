@@ -5,22 +5,37 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
 export function subscribeAllUsers(onChange) {
-  const unSub = onSnapshot(collection(getDb(), "users"), (snap) => {
-    const arr = snap.docs
+  return onSnapshot(collection(getDb(), "users"), (snap) => {
+    const list = snap.docs
       .map((d) => {
         const x = d.data() || {};
         return {
+          uid: d.id,
           email: (x.email || "").trim(),
           name: (x.displayName || "").trim(),
+          photoURL: x.photoURL || "",
         };
       })
       .filter((u) => u.email);
-    // unique by email + sort
-    const map = new Map();
-    for (const u of arr) if (!map.has(u.email)) map.set(u.email, u);
-    onChange(
-      Array.from(map.values()).sort((a, b) => a.email.localeCompare(b.email))
-    );
+    onChange(list);
   });
-  return unSub;
+}
+
+export function subscribeUsersMap(onChange) {
+  return onSnapshot(collection(getDb(), "users"), (snap) => {
+    const byUid = new Map(),
+      byEmail = new Map();
+    snap.forEach((d) => {
+      const x = d.data() || {};
+      const u = {
+        uid: d.id,
+        email: (x.email || "").trim(),
+        name: (x.displayName || "").trim(),
+        photoURL: x.photoURL || "",
+      };
+      byUid.set(u.uid, u);
+      if (u.email) byEmail.set(u.email.toLowerCase(), u);
+    });
+    onChange({ byUid, byEmail });
+  });
 }

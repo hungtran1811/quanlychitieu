@@ -4,15 +4,12 @@ import { subscribeAllUsers } from "../store/users.js";
 import { money, ymd } from "../utils/format.js";
 import { toast } from "../utils/toast.js";
 
-let _unsubUsers = null;
-let _usersCache = [];
-let _token = 0;
+let unUsers = null,
+  users = [];
 
 export function render() {
   const root = document.getElementById("app-root");
   const today = ymd(Date.now());
-  const token = ++_token;
-
   root.innerHTML = `
   <section class="card"><div class="inner">
     <h2>Thêm khoản chi</h2>
@@ -51,37 +48,30 @@ export function render() {
   const boxPart = document.getElementById("sugg-participants");
   const boxPayer = document.getElementById("sugg-payer");
 
-  // default payer = current user email
-  const u = currentUser();
-  if (u?.email && !fPayer.value) fPayer.value = u.email;
+  const me = currentUser();
+  if (me?.email && !fPayer.value) fPayer.value = me.email;
 
-  // realtime users for chip
-  if (_unsubUsers) {
-    _unsubUsers();
-    _unsubUsers = null;
-  }
-  _unsubUsers = subscribeAllUsers((rows) => {
-    _usersCache = rows;
-    if (token !== _token) return;
+  if (unUsers) unUsers();
+  unUsers = subscribeAllUsers((list) => {
+    users = list;
   });
 
   function renderChips(box, q = "") {
     const query = (q || "").trim().toLowerCase();
-    const items = _usersCache
+    const items = users
       .filter(
         (x) =>
           !query ||
-          x.email.toLowerCase().includes(query) ||
-          x.name.toLowerCase().includes(query)
+          x.name.toLowerCase().includes(query) ||
+          x.email.toLowerCase().includes(query)
       )
-      .slice(0, 12);
+      .slice(0, 14);
+
     box.innerHTML = items
-      .map(
-        (u) =>
-          `<span class="chip" data-email="${u.email}">${
-            u.name || u.email
-          } <small>• ${u.email}</small></span>`
-      )
+      .map((u) => {
+        const label = u.name || u.email.split("@")[0];
+        return `<span class="chip" title="${u.email}" data-email="${u.email}">${label} <span class="sub">• chọn</span></span>`;
+      })
       .join("");
     box.classList.toggle("hidden", items.length === 0);
   }
@@ -90,26 +80,26 @@ export function render() {
     boxPayer.classList.add("hidden");
   };
 
-  // participants: gõ theo token cuối; click -> push vào list
+  // Participants
   fParticipants.addEventListener("focus", () => renderChips(boxPart, ""));
   fParticipants.addEventListener("input", () => {
-    const tokenTxt = fParticipants.value.split(",").slice(-1)[0].trim();
-    renderChips(boxPart, tokenTxt);
+    const lastToken = fParticipants.value.split(",").slice(-1)[0].trim();
+    renderChips(boxPart, lastToken);
   });
   boxPart.addEventListener("click", (e) => {
     const chip = e.target.closest(".chip");
     if (!chip) return;
     const email = chip.dataset.email;
-    const parts = fParticipants.value
+    const arr = fParticipants.value
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
-    if (!parts.includes(email)) parts.push(email);
-    fParticipants.value = parts.join(", ");
+    if (!arr.includes(email)) arr.push(email);
+    fParticipants.value = arr.join(", ");
     hideBoxes();
   });
 
-  // payer: click -> set 1 email
+  // Payer
   fPayer.addEventListener("focus", () => renderChips(boxPayer, ""));
   fPayer.addEventListener("input", () => renderChips(boxPayer, fPayer.value));
   boxPayer.addEventListener("click", (e) => {
@@ -136,8 +126,8 @@ export function render() {
   // submit
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const user = currentUser();
-    if (!user) return alert("Bạn cần đăng nhập.");
+    const u = currentUser();
+    if (!u) return alert("Bạn cần đăng nhập.");
     const amount = parseInt(fAmount.value, 10);
     if (!Number.isFinite(amount) || amount <= 0)
       return alert("Số tiền không hợp lệ.");
@@ -150,16 +140,16 @@ export function render() {
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean),
-      payerEmail: (fPayer.value || "").trim() || user.email || "",
+      payerEmail: (fPayer.value || "").trim() || u.email || "",
       splitMethod: "equal",
     };
     try {
-      const ref = await createExpenseRequest({ uid: user.uid, payload });
+      const ref = await createExpenseRequest({ uid: u.uid, payload });
       reqStatus.textContent = `Đã gửi! Mã yêu cầu: ${ref.id}`;
       toast(`Đã gửi yêu cầu ${money(amount)}₫`);
       form.reset();
       fDate.value = ymd(Date.now());
-      if (user?.email) fPayer.value = user.email;
+      if (u?.email) fPayer.value = u.email;
       hideBoxes();
     } catch (err) {
       console.error(err);
