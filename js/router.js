@@ -5,6 +5,7 @@ import * as Dash from "./pages/my-dashboard.js"; // skeleton
 import * as Pay from "./pages/pay-debt.js"; // skeleton
 import * as AdminQueue from "./pages/admin-queue.js"; // skeleton
 import * as AdminView from "./pages/admin-overview.js"; // skeleton
+import * as Dash from "./pages/my-dashboard.js";
 
 const routes = {
   "#/welcome": Welcome,
@@ -14,6 +15,7 @@ const routes = {
   "#/pay": Pay,
   "#/admin/queue": AdminQueue,
   "#/admin/overview": AdminView,
+  "#/dashboard": Dash,
 };
 
 // Guard: các route yêu cầu đăng nhập
