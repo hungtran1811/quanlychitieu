@@ -1,8 +1,8 @@
 import {
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithRedirect, // +++
-  getRedirectResult, // +++
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   onAuthStateChanged,
   setPersistence,
@@ -22,12 +22,10 @@ export function onAuthChanges(cb) {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: "select_account" });
 
-  // ➊ NHẬN KẾT QUẢ SAU KHI REDIRECT (khi user quay lại app)
+  // Nhận kết quả sau khi quay lại từ redirect (mobile/in-app)
   try {
     await getRedirectResult(auth);
-  } catch (e) {
-    /* ignore */
-  }
+  } catch (_) {}
 
   onAuthStateChanged(auth, (user) => {
     const isAdmin = !!user && user.uid === ADMIN_UID;
@@ -35,7 +33,6 @@ export function onAuthChanges(cb) {
   });
 })();
 
-// ➋ CHỌN REDIRECT TRÊN MOBILE/IN-APP, POPUP TRÊN DESKTOP
 export async function login() {
   const auth = getAuthInst();
   const provider = new GoogleAuthProvider();
@@ -47,12 +44,9 @@ export async function login() {
   );
   const isMobile = /Mobi|Android|iPhone|iPad/i.test(ua);
 
-  if (inApp || isMobile) {
-    return await signInWithRedirect(auth, provider);
-  }
+  if (inApp || isMobile) return await signInWithRedirect(auth, provider);
   return await signInWithPopup(auth, provider);
 }
-
 export async function logout() {
   const auth = getAuthInst();
   return await signOut(auth);
