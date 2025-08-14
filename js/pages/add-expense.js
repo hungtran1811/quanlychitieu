@@ -256,13 +256,13 @@ export async function render() {
       <div style="grid-column:1/-1">
         <label>Những người mua cùng</label>
         <input id="f-participants" type="text" placeholder="gõ tên/email để tìm, enter để chọn..." />
-        <div class="hint">Bạn có thể chọn nhiều người.</div>
+
       </div>
 
       <div style="grid-column:1/-1">
         <label>Người trả tiền</label>
         <input id="f-payer" type="text" placeholder="gõ tên/email để tìm, enter để chọn..." />
-        <div class="hint">Nếu bỏ trống sẽ lấy email của bạn.</div>
+
       </div>
 
       <div style="grid-column:1/-1" class="row">
