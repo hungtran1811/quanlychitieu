@@ -4,6 +4,7 @@ import * as Mine from "./pages/my-requests.js";
 import * as Debts from "./pages/debts.js";
 import * as PayDebt from "./pages/pay-debt.js";
 import * as AdminQueue from "./pages/admin-queue.js";
+import * as Admin from "./pages/admin-overview.js";
 import * as History from "./pages/history.js"; // NEW
 import * as Users from "./pages/users.js";
 
@@ -14,6 +15,7 @@ const routes = {
   "#/debts": Debts,
   "#/pay-debt": PayDebt,
   "#/admin/queue": AdminQueue,
+  "#/admin": Admin,
   "#/history": History,
   "#/users": Users,
 };
@@ -26,7 +28,7 @@ const PROTECTED = [
   "#/dashboard",
   "#/pay",
   "#/admin/queue",
-  "#/admin/overview",
+  "#/admin",
   "#/debts",
 ];
 export function setAuthGuardState(v) {

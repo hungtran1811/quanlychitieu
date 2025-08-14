@@ -39,41 +39,48 @@
     <!-- Header / Navbar -->
     <header class="nav">
       <div class="brand">
-        <div class="logo" aria-hidden>₫</div>
+        <div class="logo">₫</div>
         <div>
           <strong>ExpenseApp</strong>
-          <div class="muted small">Firebase • Auth • Firestore</div>
+          <div class="muted small">MVP • Firestore + Auth</div>
         </div>
       </div>
-      <nav class="row" aria-label="Điều hướng chính">
+
+      <nav class="row">
         <span id="admin-badge" class="admin-badge hidden">Admin</span>
 
-        <!-- App routes (hash) -->
-        <button class="btn" data-link="#/welcome">Trang chào</button>
-        <button class="btn" data-link="#/add" data-auth-required>
-          Thêm khoản chi
-        </button>
-        <button class="btn" data-link="#/debts" data-auth-required>
-          Bảng nợ
-        </button>
-        <button class="btn" data-link="#/pay-debt" data-auth-required>
-          Thanh toán nợ
-        </button>
-        <button class="btn" data-link="#/mine" data-auth-required>
-          Yêu cầu của tôi
-        </button>
-        <button data-link="#/history" class="btn" data-auth-required>
-          Lịch sử
-        </button>
-        <button class="btn" data-link="#/users" data-auth-required>
-          Thành viên
-        </button>
-        <button class="btn" data-link="#/admin/queue" data-admin-only>
-          Admin
-        </button>
+        <button data-link="#/welcome" class="btn">Home</button>
 
-        <!-- Auth actions -->
-        <button id="btn-login" class="btn primary">Đăng nhập Google</button>
+        <!-- Menu rút gọn -->
+        <div class="menu" id="main-menu">
+          <button class="btn" id="menu-btn">Menu ▾</button>
+          <div class="menu-panel hidden" id="menu-panel">
+            <button class="menu-item" data-link="#/add" data-auth-required>
+              Thêm khoản chi
+            </button>
+            <button class="menu-item" data-link="#/mine" data-auth-required>
+              Yêu cầu của tôi
+            </button>
+            <button class="menu-item" data-link="#/debts" data-auth-required>
+              Bảng nợ
+            </button>
+            <button class="menu-item" data-link="#/pay-debt" data-auth-required>
+              Thanh toán nợ
+            </button>
+            <button class="menu-item" data-link="#/history" data-auth-required>
+              Lịch sử
+            </button>
+            <hr />
+            <button class="menu-item" data-link="#/admin/queue" data-admin-only>
+              Admin Queue
+            </button>
+            <button class="menu-item" data-link="#/admin" data-admin-only>
+              Admin Overview
+            </button>
+          </div>
+        </div>
+
+        <button id="btn-login" class="btn primary">Đăng nhập</button>
         <button id="btn-logout" class="btn hidden" data-auth-required>
           Đăng xuất
         </button>

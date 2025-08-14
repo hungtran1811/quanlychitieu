@@ -1,4 +1,8 @@
-/* Tables */
+/* ===========================
+   Components.css — Phase 7 tidy + Menu
+   =========================== */
+
+/* ========== Tables ========== */
 .table {
     width: 100%;
     border-collapse: separate;
@@ -27,7 +31,23 @@
     border-bottom-right-radius: 10px
 }
 
-/* Pills / Chips */
+/* Sticky header + hover (opt-in) */
+.table.sticky thead th {
+    position: sticky;
+    top: 0;
+    background: rgba(10, 14, 20, .85);
+    backdrop-filter: blur(8px)
+}
+
+.table-hover tbody tr {
+    transition: background .12s ease
+}
+
+.table-hover tbody tr:hover {
+    background: rgba(255, 255, 255, .06)
+}
+
+/* ========== Chips / Pills ========== */
 .chips {
     display: flex;
     gap: 8px;
@@ -55,24 +75,133 @@
     font-size: 12px
 }
 
-/* Filters */
-.filters {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin: 8px 0 12px
+/* Type pills */
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700
 }
 
+.pill-exp {
+    background: rgba(0, 194, 168, .15);
+    color: #7af0df;
+    border: 1px solid rgba(0, 194, 168, .35)
+}
+
+.pill-pay {
+    background: rgba(79, 140, 255, .15);
+    color: #b8d3ff;
+    border: 1px solid rgba(79, 140, 255, .35)
+}
+
+/* ========== Inputs / Filters ========== */
+.filters,
+.filter-bar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 8px 0 12px;
+    align-items: flex-end
+}
+
+.filters .select,
+.filters .input,
+.filter-bar input[type="month"],
+.filter-bar select,
 .select,
 .input {
     padding: 8px 10px;
     border-radius: 10px;
     border: 1px solid rgba(255, 255, 255, .16);
     background: rgba(0, 0, 0, .25);
+    color: #e7eef5;
+    min-width: 160px
+}
+
+.filter-bar .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px
+}
+
+.filter-bar button {
+    height: 40px
+}
+
+/* ===== Admin Queue – filter selects (scoped) ===== */
+#admin-queue .aq-filters {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin: 8px 0 14px
+}
+
+#admin-queue .aq-label {
+    font-size: 13px;
+    color: #9fb0c2;
+    margin: 0 4px
+}
+
+#admin-queue .aq-select-wrap {
+    position: relative;
+    display: inline-block
+}
+
+#admin-queue .aq-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    min-width: 160px;
+    padding: 10px 36px 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, .22);
+    background: rgba(255, 255, 255, .06);
+    color: #e7eef5;
+    font-weight: 700;
+    letter-spacing: .2px;
+    font-size: 14px
+}
+
+#admin-queue .aq-select:hover {
+    background: rgba(255, 255, 255, .10);
+    border-color: rgba(255, 255, 255, .35)
+}
+
+#admin-queue .aq-select:focus {
+    outline: 2px solid rgba(79, 140, 255, .65);
+    box-shadow: 0 0 0 3px rgba(79, 140, 255, .18)
+}
+
+#admin-queue .aq-select option {
+    background: #0f1722;
     color: #e7eef5
 }
 
-/* Stat cards */
+#admin-queue .aq-select-wrap::after {
+    content: "";
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    width: 10px;
+    height: 10px;
+    margin-top: -6px;
+    pointer-events: none;
+    opacity: .9;
+    border-right: 2px solid #cfe1ff;
+    border-bottom: 2px solid #cfe1ff;
+    transform: rotate(45deg)
+}
+
+#admin-queue .aq-refresh {
+    height: 40px
+}
+
+/* ========== Stat cards ========== */
 .stats3 {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -101,7 +230,35 @@
     color: #00c2a8
 }
 
-/* Accordion person blocks */
+/* Small stat cards (shared) */
+.stats {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 8px 0 12px
+}
+
+.stat-card {
+    min-width: 180px;
+    flex: 0 0 auto;
+    padding: 10px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, .12);
+    background: linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .03))
+}
+
+.stat-card .label {
+    font-size: 12px;
+    color: #9fb0c2;
+    margin-bottom: 4px
+}
+
+.stat-card .value {
+    font-size: 20px;
+    font-weight: 800
+}
+
+/* ========== Accordion / Person blocks ========== */
 .list {
     display: flex;
     flex-direction: column;
@@ -164,7 +321,7 @@
     padding: 8px 12px 12px
 }
 
-/* Admin queue */
+/* ========== Admin queue badges ========== */
 .badge {
     padding: 2px 8px;
     border-radius: 999px;
@@ -190,7 +347,76 @@
     border: none
 }
 
-/* Utility */
+/* ========== Users page ========== */
+#page-users .user-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+    margin-top: 8px
+}
+
+#page-users .user-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, .12);
+    background: rgba(255, 255, 255, .04);
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    cursor: pointer;
+    text-align: left
+}
+
+#page-users .user-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, .28);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .25)
+}
+
+#page-users .avatar-lg {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, .14)
+}
+
+#page-users .user-info {
+    flex: 1 1 auto;
+    min-width: 0
+}
+
+#page-users .user-name {
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #f3f7ff;
+    line-height: 1.15;
+    letter-spacing: .1px
+}
+
+#page-users .user-card:hover .user-name {
+    color: #fff
+}
+
+#page-users .user-email {
+    font-size: 12px;
+    color: #9fb0c2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis
+}
+
+#page-users .chev {
+    font-size: 20px;
+    opacity: .4;
+    transform: translateX(2px)
+}
+
+/* ========== Utility ========== */
 .row {
     display: flex;
     gap: 10px;
@@ -235,224 +461,58 @@
     filter: brightness(.98)
 }
 
-/* ===== Admin Queue – Filter Selects (scoped) ===== */
-#admin-queue .aq-filters {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
-    margin: 8px 0 14px
+/* ========== Menu (nav rút gọn) ========== */
+.admin-badge {
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .08);
+    border: 1px solid rgba(255, 255, 255, .18);
+    font-size: 12px
 }
 
-#admin-queue .aq-label {
-    font-size: 12px;
-    color: #9fb0c2;
-    margin-left: 2px;
-    margin-right: 4px
+.menu {
+    position: relative
 }
 
-#admin-queue .aq-select-wrap {
-    position: relative;
-    display: inline-block
-}
-
-#admin-queue .aq-select {
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    min-width: 160px;
-    padding: 10px 36px 10px 12px;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, .22);
-    background: rgba(255, 255, 255, .06);
-    color: #e7eef5;
-    font-weight: 700;
-    letter-spacing: .2px
-}
-
-#admin-queue .aq-select:hover {
-    background: rgba(255, 255, 255, .10);
-    border-color: rgba(255, 255, 255, .35)
-}
-
-#admin-queue .aq-select:focus {
-    outline: 2px solid rgba(79, 140, 255, .65);
-    box-shadow: 0 0 0 3px rgba(79, 140, 255, .18)
-}
-
-#admin-queue .aq-select option {
-    background: #0f1722;
-    color: #e7eef5
-}
-
-#admin-queue .aq-select-wrap::after {
-    content: "";
+.menu-panel {
     position: absolute;
-    right: 12px;
-    top: 50%;
-    width: 10px;
-    height: 10px;
-    margin-top: -6px;
-    pointer-events: none;
-    opacity: .9;
-    border-right: 2px solid #cfe1ff;
-    border-bottom: 2px solid #cfe1ff;
-    transform: rotate(45deg)
-}
-
-#admin-queue .aq-refresh {
-    height: 40px
-}
-
-#admin-queue .aq-select {
-    font-size: 14px
-}
-
-#admin-queue .aq-label {
-    font-size: 13px
-}
-
-/* Filter group (history/users) */
-.filter-bar {
-    display: flex;
-    gap: 10px;
-    align-items: flex-end;
-    flex-wrap: wrap;
-    margin: 8px 0 12px
-}
-
-.filter-bar .field {
+    right: 0;
+    top: 110%;
+    z-index: 50;
+    min-width: 220px;
+    padding: 6px;
+    background: rgba(14, 18, 26, .98);
+    border: 1px solid rgba(255, 255, 255, .10);
+    border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, .35);
     display: flex;
     flex-direction: column;
-    gap: 4px
+    gap: 6px
 }
 
-.filter-bar input[type="month"],
-.filter-bar select {
-    padding: 10px 12px;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, .18);
-    background: rgba(255, 255, 255, .06);
-    color: #e7eef5;
-    min-width: 160px
-}
-
-.filter-bar button {
-    height: 40px
-}
-
-/* ===== Users ===== */
-#page-users .user-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 12px;
-    margin-top: 8px
-}
-
-#page-users .user-card {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    padding: 12px;
-    border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, .12);
-    background: rgba(255, 255, 255, .04);
-    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
-    cursor: pointer;
+.menu-item {
+    appearance: none;
     text-align: left;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, .06);
+    background: transparent;
+    color: #e7eef5;
+    padding: 10px 12px;
+    border-radius: 10px
 }
 
-#page-users .user-card:hover {
-    transform: translateY(-2px);
-    border-color: rgba(255, 255, 255, .28);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+.menu-item:hover {
+    background: rgba(255, 255, 255, .06)
 }
 
-#page-users .avatar-lg {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 1px solid rgba(255, 255, 255, .14)
+.menu hr {
+    border: none;
+    height: 1px;
+    background: rgba(255, 255, 255, .08);
+    margin: 4px 0
 }
 
-#page-users .user-info {
-    flex: 1 1 auto;
-    min-width: 0
-}
-
-#page-users .user-name {
-    font-weight: 700;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis
-}
-
-#page-users .user-email {
-    font-size: 12px;
-    color: #9fb0c2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis
-}
-
-#page-users .chev {
-    font-size: 20px;
-    opacity: .4;
-    transform: translateX(2px)
-}
-
-
-/* Tên user: to và sáng hơn */
-#page-users .user-name {
-    /* đậm hơn */
-    color: #f3f7ff;
-    /* sáng hơn */
-    line-height: 1.15;
-    letter-spacing: .1px;
-}
-
-/* Khi hover card thì sáng hẳn để dễ thấy */
-#page-users .user-card:hover .user-name {
-    color: #ffffff;
-}
-
-/* (tuỳ chọn) email nhỏ & dịu hơn để tên nổi bật */
-#page-users .user-email {
-    font-size: 12px;
-    color: #9fb0c2;
-}
-
-/* small stat cards (shared) */
-.stats {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin: 8px 0 12px
-}
-
-.stat-card {
-    min-width: 180px;
-    flex: 0 0 auto;
-    padding: 10px 14px;
-    border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, .12);
-    background: linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .03))
-}
-
-.stat-card .label {
-    font-size: 12px;
-    color: #9fb0c2;
-    margin-bottom: 4px
-}
-
-.stat-card .value {
-    font-size: 20px;
-    font-weight: 800
-}
-
-/* ===== History ===== */
+/* ========== History (scoped helpers) ========== */
 #page-history .filter-bar {
     display: flex;
     gap: 10px;
@@ -480,42 +540,4 @@
 #page-history .table-wrap {
     overflow: auto;
     border-radius: 12px
-}
-
-.table.sticky thead th {
-    position: sticky;
-    top: 0;
-    background: rgba(10, 14, 20, .85);
-    backdrop-filter: blur(8px)
-}
-
-.table-hover tbody tr {
-    transition: background .12s ease
-}
-
-.table-hover tbody tr:hover {
-    background: rgba(255, 255, 255, .06)
-}
-
-/* pills */
-.pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 700
-}
-
-.pill-exp {
-    background: rgba(0, 194, 168, .15);
-    color: #7af0df;
-    border: 1px solid rgba(0, 194, 168, .35)
-}
-
-.pill-pay {
-    background: rgba(79, 140, 255, .15);
-    color: #b8d3ff;
-    border: 1px solid rgba(79, 140, 255, .35)
 }
