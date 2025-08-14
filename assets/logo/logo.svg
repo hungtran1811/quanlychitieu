@@ -1,0 +1,14 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ExpenseApp">
+  <rect x="16" y="16" width="224" height="224" rx="48" fill="#121821"></rect>
+  <g stroke="url(#g)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <defs>
+      <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#00c2a8"></stop>
+        <stop offset="1" stop-color="#4f8cff"></stop>
+      </linearGradient>
+    </defs>
+    <path d="M64 88h104a24 24 0 0 1 24 24v56a24 24 0 0 1-24 24H64a24 24 0 0 1-24-24v-56a24 24 0 0 1 24-24z"></path>
+    <path d="M168 112h40v56h-40a20 20 0 0 1-20-20v-16a20 20 0 0 1 20-20z"></path>
+    <circle cx="184" cy="152" r="8" fill="#4f8cff" stroke="none"></circle>
+  </g>
+</svg>
