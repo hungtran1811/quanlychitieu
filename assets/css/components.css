@@ -633,3 +633,57 @@ input[type="number"] {
     gap: 10px;
     align-items: center
 }
+
+/* —— Suggestion chips (giống Admin Overview) —— */
+.suggest-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px
+}
+
+.chip-suggest {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #f4f7fb;
+    color: #0b0f14;
+    border: 1px solid rgba(0, 0, 0, .06);
+    cursor: pointer;
+    transition: transform .06s ease, box-shadow .12s ease;
+}
+
+.chip-suggest:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .12)
+}
+
+.chip-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+
+.chip-name {
+    font-size: 13px
+}
+
+
+/* Ẩn spinner number (đừng làm người dùng khó chịu) */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0
+}
+
+input[type="number"] {
+    -moz-appearance: textfield
+}

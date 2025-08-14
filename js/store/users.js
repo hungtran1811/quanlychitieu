@@ -45,3 +45,17 @@ export function subscribeUsersMap(cb) {
     cb({ byEmail, byUid });
   });
 }
+
+/** Dữ liệu chips: label + key + avatar initial */
+export function toChipItems(users) {
+  return users
+    .filter((u) => u.email) // chỉ gợi ý các user có email
+    .map((u) => ({
+      key: u.email,
+      name: u.displayName || u.email,
+      email: u.email,
+      photoURL: u.photoURL || "",
+      initial: (u.displayName || u.email || "?").trim().charAt(0).toUpperCase(),
+      label: `${u.displayName || u.email} • ${u.email}`,
+    }));
+}
