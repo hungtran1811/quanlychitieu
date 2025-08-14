@@ -5,8 +5,9 @@ import * as Debts from "./pages/debts.js";
 import * as PayDebt from "./pages/pay-debt.js";
 import * as AdminQueue from "./pages/admin-queue.js";
 import * as Admin from "./pages/admin-overview.js";
-import * as History from "./pages/history.js"; // NEW
+import * as History from "./pages/history.js";
 import * as Users from "./pages/users.js";
+import * as HouseBill from "./pages/house-bill.js";
 
 const routes = {
   "#/welcome": Welcome,
@@ -18,6 +19,7 @@ const routes = {
   "#/admin": Admin,
   "#/history": History,
   "#/users": Users,
+  "#/house-bill": HouseBill,
 };
 
 // Guard: các route yêu cầu đăng nhập

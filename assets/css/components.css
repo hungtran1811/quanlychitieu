@@ -573,6 +573,7 @@
     border: 1px solid rgba(0, 0, 0, .08);
     box-shadow: 0 2px 6px rgba(0, 0, 0, .08);
     transition: transform .08s ease, box-shadow .12s ease, border-color .12s ease, background-color .12s ease;
+    margin: 10px;
 }
 
 .chip:hover {
@@ -598,22 +599,7 @@
             hsl(calc(var(--h, 210) + 40) 70% 45%));
 }
 
-.chip-text {
-    display: flex;
-    gap: 6px;
-    align-items: baseline
-}
 
-.chip-text strong {
-    font-size: 13px;
-    color: #111
-}
-
-.chip-sub {
-    font-size: 12px;
-    color: #444;
-    opacity: .9
-}
 
 /* Ẩn spinner ở ô nhập số */
 input[type="number"]::-webkit-outer-spin-button,
@@ -639,7 +625,8 @@ input[type="number"] {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-top: 8px
+    margin-top: 8px;
+
 }
 
 .chip-suggest {
@@ -695,4 +682,145 @@ input[type="number"] {
     display: inline-block;
     object-fit: cover;
     box-shadow: 0 6px 18px rgba(0, 0, 0, .25);
+}
+
+
+/* --- Summary box --- */
+.summary-box {
+    display: grid;
+    gap: 6px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .04);
+    border: 1px solid rgba(255, 255, 255, .08)
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center
+}
+
+/* --- tiny grid helpers for layout above --- */
+.col-span-2 {
+    grid-column: span 2
+}
+
+.col-span-3 {
+    grid-column: span 3
+}
+
+.col-span-6 {
+    grid-column: span 6
+}
+
+.col-span-12 {
+    grid-column: span 12
+}
+
+/* ===== HouseBill: Fancy checkbox + row highlight ===== */
+
+
+.hb-member:hover {
+    border-color: rgba(255, 255, 255, .16);
+    background: rgba(255, 255, 255, .05);
+}
+
+/* Custom checkbox */
+.hb-check {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border: 2px solid rgba(255, 255, 255, .25);
+    background: transparent;
+    display: inline-grid;
+    place-content: center;
+    cursor: pointer;
+    transition: all .16s ease;
+    outline: none;
+}
+
+.hb-check:hover {
+    border-color: rgba(255, 255, 255, .45);
+}
+
+.hb-check:focus-visible {
+    box-shadow: 0 0 0 3px rgba(79, 140, 255, .35);
+}
+
+.hb-check::after {
+    content: "";
+    width: 6px;
+    height: 11px;
+    border-right: 3px solid #fff;
+    border-bottom: 3px solid #fff;
+    transform: rotate(45deg) scale(0);
+    transform-origin: center;
+    transition: transform .12s ease-in-out;
+}
+
+.hb-check:checked {
+    background: var(--acc);
+    border-color: var(--acc);
+}
+
+.hb-check:checked::after {
+    transform: rotate(45deg) scale(1);
+}
+
+/* Khi checkbox được tick, row sáng hơn một chút */
+.hb-member:has(.hb-check:checked) {
+    background: rgba(0, 194, 168, .08);
+    /* dùng màu phụ var(--acc2) nhẹ */
+    border-color: rgba(0, 194, 168, .35);
+}
+
+/* Cột thông tin và date bên phải (giữ bố cục hiện tại) */
+.hb-user {
+    flex: 1;
+    min-width: 0
+}
+
+.hb-name {
+    font-weight: 600
+}
+
+.hb-email {
+    font-size: 12px;
+    color: var(--muted)
+}
+
+.hb-early {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px
+}
+
+.hb-early label {
+    font-size: 12px;
+    color: var(--muted)
+}
+
+.hb-early input[type="date"] {
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, .25);
+    color: var(--text);
+    border: 1px solid rgba(255, 255, 255, .16);
+}
+
+.hb-early input[type="date"]:focus {
+    outline: 2px solid rgba(79, 140, 255, .35);
+}
+
+/* Fallback nhanh nếu trình duyệt không hỗ trợ :has — vẫn đẹp */
+@supports not(selector(:has(*))) {
+
+    .hb-check:checked+.hb-user~.hb-early,
+    .hb-check:checked {
+        /* vẫn đổi nền checkbox là đủ nhận biết */
+    }
 }
