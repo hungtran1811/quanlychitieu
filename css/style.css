@@ -1,0 +1,17 @@
+
+/* Custom minimal tweaks for readability */
+:root { --accent:#2f7ae5; }
+body { background:#f7f8fa; }
+.table td, .table th { vertical-align: middle; }
+.badge { font-weight: 600; }
+.nav-link[data-active="true"] { color: var(--accent) !important; font-weight:700; }
+.card-total { font-size: 1.6rem; font-weight: 700; }
+
+.brand { 
+  display:inline-block;
+  font-weight:800;
+  font-size: 1.1rem;
+  letter-spacing: .5px;
+  color: #2f2f2f;
+}
+

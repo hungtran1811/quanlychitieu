@@ -1,0 +1,31 @@
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex align-items-center gap-2">
+      <span class="fw-bold">P102</span>
+      <strong>Admin Console</strong>
+    </div>
+    <div>
+      <a data-link href="/admin" class="nav-link d-inline px-2">Quản lý</a>
+      <a data-link href="/bills" class="nav-link d-inline px-2">Tiền nhà</a>
+      <a data-link href="/iou" class="nav-link d-inline px-2">Chi tiêu</a>
+      <button id="btnLogout" class="btn btn-outline-secondary btn-sm ms-2">Đăng xuất</button>
+    </div>
+  </div>
+  <div class="alert alert-info">Trang này chỉ admin mới xem được (guard theo UID).</div>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="card shadow-sm"><div class="card-body">
+        <h6 class="mb-2">Tiền nhà</h6>
+        <p class="text-muted">Nhập & chốt hóa đơn tháng, chia phần cho từng người.</p>
+        <a data-link href="/bills" class="btn btn-primary btn-sm">Mở Tiền nhà</a>
+      </div></div>
+    </div>
+    <div class="col-md-6">
+      <div class="card shadow-sm"><div class="card-body">
+        <h6 class="mb-2">Yêu cầu chi tiêu</h6>
+        <p class="text-muted">Duyệt các yêu cầu IOU do user gửi.</p>
+        <a data-link href="/iou" class="btn btn-primary btn-sm">Mở Chi tiêu</a>
+      </div></div>
+    </div>
+  </div>
+</div>
