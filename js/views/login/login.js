@@ -1,1 +1,11 @@
-export function init(){document.getElementById('btnGoogle')?.addEventListener('click',async()=>{try{const p=new firebase.auth.GoogleAuthProvider();await firebase.auth().signInWithPopup(p);window.navigate('/dashboard')}catch(e){alert('Đăng nhập thất bại: '+e.message)}})}
+export function init() {
+  document.getElementById("btnGoogle")?.addEventListener("click", async () => {
+    try {
+      const p = new firebase.auth.GoogleAuthProvider();
+      await firebase.auth().signInWithPopup(p);
+      window.navigate("/dashboard");
+    } catch (e) {
+      alert("Đăng nhập thất bại: " + e.message);
+    }
+  });
+}

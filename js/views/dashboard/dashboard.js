@@ -1,5 +1,61 @@
-function fmt(v){return (Number(v)||0).toLocaleString('vi-VN')+' đ'}
-async function readDebts(uid){try{const db=firebase.firestore();const s=await db.collection('debts').where('userId','==',uid).orderBy('createdAt','desc').limit(50).get();return s.docs.map(d=>({id:d.id,...d.data()}))}catch(e){console.warn(e);return null}}
-function renderRows(tb,items){if(!tb)return; if(!items||!items.length){tb.innerHTML='<tr><td colspan="5" class="text-muted">Chưa có dữ liệu.</td></tr>';return} tb.innerHTML=items.map(i=>`<tr><td>${i.title||'—'}</td><td>${i.kind||'—'}</td><td>${i.creditor||'—'}</td><td class="text-end">${fmt(i.amount)}</td><td>${i.status||'—'}</td></tr>`).join('')}
-function sumUnpaid(items){return (items||[]).filter(i=>(i.status||'').toLowerCase()==='unpaid').reduce((s,i)=>s+(+i.amount||0),0)}
-export async function init(ctx){document.getElementById('btnLogout')?.addEventListener('click',async()=>{await firebase.auth().signOut();window.navigate('/login')});const u=ctx?.user;document.getElementById('userName').textContent=u?.displayName||u?.email||'User';const tb=document.getElementById('debtRows');const items=await readDebts(u.uid);if(items){renderRows(tb,items);document.getElementById('totalDebt').textContent=fmt(sumUnpaid(items))}else{renderRows(tb,null);document.getElementById('totalDebt').textContent=fmt(0)}}
+function fmt(v) {
+  return (Number(v) || 0).toLocaleString("vi-VN") + " đ";
+}
+async function readDebts(uid) {
+  try {
+    const db = firebase.firestore();
+    const s = await db
+      .collection("debts")
+      .where("userId", "==", uid)
+      .orderBy("createdAt", "desc")
+      .limit(50)
+      .get();
+    return s.docs.map((d) => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn(e);
+    return null;
+  }
+}
+function renderRows(tb, items) {
+  if (!tb) return;
+  if (!items || !items.length) {
+    tb.innerHTML =
+      '<tr><td colspan="5" class="text-muted">Chưa có dữ liệu.</td></tr>';
+    return;
+  }
+  tb.innerHTML = items
+    .map(
+      (i) =>
+        `<tr><td>${i.title || "—"}</td><td>${i.kind || "—"}</td><td>${
+          i.creditor || "—"
+        }</td><td class="text-end">${fmt(i.amount)}</td><td>${
+          i.status || "—"
+        }</td></tr>`
+    )
+    .join("");
+}
+function sumUnpaid(items) {
+  return (items || [])
+    .filter((i) => (i.status || "").toLowerCase() === "unpaid")
+    .reduce((s, i) => s + (+i.amount || 0), 0);
+}
+export async function init(ctx) {
+  document.getElementById("btnLogout")?.addEventListener("click", async () => {
+    await firebase.auth().signOut();
+    window.navigate("/login");
+  });
+  window.P102?.renderAdminNav(ctx?.user); // <- thêm dòng này
+
+  const u = ctx?.user;
+  document.getElementById("userName").textContent =
+    u?.displayName || u?.email || "User";
+  const tb = document.getElementById("debtRows");
+  const items = await readDebts(u.uid);
+  if (items) {
+    renderRows(tb, items);
+    document.getElementById("totalDebt").textContent = fmt(sumUnpaid(items));
+  } else {
+    renderRows(tb, null);
+    document.getElementById("totalDebt").textContent = fmt(0);
+  }
+}

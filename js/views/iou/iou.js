@@ -1,6 +1,134 @@
-function fmt(v){return (Number(v)||0).toLocaleString('vi-VN')+' đ'}function members(){return(window.P102&&window.P102.MEMBERS)||[]}
-function renderParticipants(){const box=document.getElementById('participantBox');if(!box)return;const u=firebase.auth().currentUser;const list=members();if(!list.length){box.innerHTML=`<div class="alert alert-warning">Chưa cấu hình thành viên. Sửa <code>js/members.js</code>.</div>`;return}box.innerHTML=list.map(m=>`<div class="form-check"><input class="form-check-input participant" type="checkbox" data-uid="${m.uid}" data-name="${m.name}" ${u&&u.uid===m.uid?'checked':''}><label class="form-check-label">${m.name}${u&&u.uid===m.uid?' (bạn)':''}</label></div>`).join('')}
-async function submitRequest(){const amount=Number(document.getElementById('amount').value||0);const desc=document.getElementById('desc').value.trim();const checks=Array.from(document.querySelectorAll('.participant:checked'));if(!amount||!desc)return alert('Nhập số tiền và mô tả');if(!checks.length)return alert('Chọn người tham gia');const u=firebase.auth().currentUser;if(!u)return window.navigate('/login');const participants=checks.map(c=>({uid:c.dataset.uid,name:c.dataset.name}));const db=firebase.firestore();const now=firebase.firestore.FieldValue.serverTimestamp();await db.collection('iouRequests').add({status:'pending',amount,description:desc,payer:{uid:u.uid,name:u.displayName||u.email||'User'},participants,requesterUid:u.uid,requesterName:u.displayName||u.email||'User',createdAt:now});document.getElementById('amount').value='';document.getElementById('desc').value='';await loadLists();alert('Đã gửi yêu cầu.')}
-async function loadYourQueues(uid){const db=firebase.firestore();const snap=await db.collection('iouRequests').where('requesterUid','==',uid).orderBy('createdAt','desc').limit(50).get();const items=snap.docs.map(d=>({id:d.id,...d.data()}));const tb=document.getElementById('yourQueue');if(tb)tb.innerHTML=items.map(r=>`<tr><td>${r.createdAt?.toDate?r.createdAt.toDate().toISOString().slice(0,16).replace('T',' '):'—'}</td><td>${r.description||'—'}</td><td class="text-end">${fmt(r.amount)}</td><td><span class="badge ${r.status==='pending'?'text-bg-warning':(r.status==='approved'?'text-bg-success':'text-bg-danger')}">${r.status||'—'}</span></td></tr>`).join('')||`<tr><td colspan="4" class="text-muted">Chưa có yêu cầu.</td></tr>`;const a=await db.collection('iouRequests').where('requesterUid','==',uid).where('status','==','approved').orderBy('createdAt','desc').limit(50).get();const items2=a.docs.map(d=>({id:d.id,...d.data()}));const tb2=document.getElementById('approvedList');if(tb2)tb2.innerHTML=items2.map(r=>`<tr><td>${r.createdAt?.toDate?r.createdAt.toDate().toISOString().slice(0,16).replace('T',' '):'—'}</td><td>${r.description||'—'}</td><td>${r.payer?.name||'—'}</td><td class="text-end">${fmt(r.amount)}</td></tr>`).join('')||`<tr><td colspan="4" class="text-muted">Chưa có giao dịch đã duyệt.</td></tr>`}
-async function loadLists(){const u=firebase.auth().currentUser;if(!u)return;await loadYourQueues(u.uid)}
-export function init(){renderParticipants();document.getElementById('btnCreateReq')?.addEventListener('click',submitRequest);loadLists().catch(console.warn)}
+function fmt(v) {
+  return (Number(v) || 0).toLocaleString("vi-VN") + " đ";
+}
+function members() {
+  return (window.P102 && window.P102.MEMBERS) || [];
+}
+function renderParticipants() {
+  const box = document.getElementById("participantBox");
+  if (!box) return;
+  const u = firebase.auth().currentUser;
+  const list = members();
+  if (!list.length) {
+    box.innerHTML = `<div class="alert alert-warning">Chưa cấu hình thành viên. Sửa <code>js/members.js</code>.</div>`;
+    return;
+  }
+  box.innerHTML = list
+    .map(
+      (m) =>
+        `<div class="form-check"><input class="form-check-input participant" type="checkbox" data-uid="${
+          m.uid
+        }" data-name="${m.name}" ${
+          u && u.uid === m.uid ? "checked" : ""
+        }><label class="form-check-label">${m.name}${
+          u && u.uid === m.uid ? " (bạn)" : ""
+        }</label></div>`
+    )
+    .join("");
+}
+async function submitRequest() {
+  const amount = Number(document.getElementById("amount").value || 0);
+  const desc = document.getElementById("desc").value.trim();
+  const checks = Array.from(document.querySelectorAll(".participant:checked"));
+  if (!amount || !desc) return alert("Nhập số tiền và mô tả");
+  if (!checks.length) return alert("Chọn người tham gia");
+  const u = firebase.auth().currentUser;
+  if (!u) return window.navigate("/login");
+  const participants = checks.map((c) => ({
+    uid: c.dataset.uid,
+    name: c.dataset.name,
+  }));
+  const db = firebase.firestore();
+  const now = firebase.firestore.FieldValue.serverTimestamp();
+  await db.collection("iouRequests").add({
+    status: "pending",
+    amount,
+    description: desc,
+    payer: { uid: u.uid, name: u.displayName || u.email || "User" },
+    participants,
+    requesterUid: u.uid,
+    requesterName: u.displayName || u.email || "User",
+    createdAt: now,
+  });
+  document.getElementById("amount").value = "";
+  document.getElementById("desc").value = "";
+  await loadLists();
+  alert("Đã gửi yêu cầu.");
+}
+async function loadYourQueues(uid) {
+  const db = firebase.firestore();
+  const snap = await db
+    .collection("iouRequests")
+    .where("requesterUid", "==", uid)
+    .orderBy("createdAt", "desc")
+    .limit(50)
+    .get();
+  const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const tb = document.getElementById("yourQueue");
+  if (tb)
+    tb.innerHTML =
+      items
+        .map(
+          (r) =>
+            `<tr><td>${
+              r.createdAt?.toDate
+                ? r.createdAt
+                    .toDate()
+                    .toISOString()
+                    .slice(0, 16)
+                    .replace("T", " ")
+                : "—"
+            }</td><td>${r.description || "—"}</td><td class="text-end">${fmt(
+              r.amount
+            )}</td><td><span class="badge ${
+              r.status === "pending"
+                ? "text-bg-warning"
+                : r.status === "approved"
+                ? "text-bg-success"
+                : "text-bg-danger"
+            }">${r.status || "—"}</span></td></tr>`
+        )
+        .join("") ||
+      `<tr><td colspan="4" class="text-muted">Chưa có yêu cầu.</td></tr>`;
+  const a = await db
+    .collection("iouRequests")
+    .where("requesterUid", "==", uid)
+    .where("status", "==", "approved")
+    .orderBy("createdAt", "desc")
+    .limit(50)
+    .get();
+  const items2 = a.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const tb2 = document.getElementById("approvedList");
+  if (tb2)
+    tb2.innerHTML =
+      items2
+        .map(
+          (r) =>
+            `<tr><td>${
+              r.createdAt?.toDate
+                ? r.createdAt
+                    .toDate()
+                    .toISOString()
+                    .slice(0, 16)
+                    .replace("T", " ")
+                : "—"
+            }</td><td>${r.description || "—"}</td><td>${
+              r.payer?.name || "—"
+            }</td><td class="text-end">${fmt(r.amount)}</td></tr>`
+        )
+        .join("") ||
+      `<tr><td colspan="4" class="text-muted">Chưa có giao dịch đã duyệt.</td></tr>`;
+}
+async function loadLists() {
+  const u = firebase.auth().currentUser;
+  if (!u) return;
+  await loadYourQueues(u.uid);
+}
+export function init() {
+  renderParticipants();
+  document
+    .getElementById("btnCreateReq")
+    ?.addEventListener("click", submitRequest);
+  loadLists().catch(console.warn);
+  window.P102?.renderAdminNav(ctx?.user); // <- thêm dòng này
+}
