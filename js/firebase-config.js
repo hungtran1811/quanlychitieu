@@ -2,7 +2,7 @@
 /* global firebase */
 window.P102 = window.P102 || {};
 window.P102.FIREBASE = {
-  ADMIN_UID: "REPLACE_WITH_YOUR_ADMIN_UID", // <-- put your admin UID here
+  ADMIN_UID: "rVrRomrCGbPqPcrPddtBTpdcLoh2", // <-- put your admin UID here
 };
 
 //Example init (compat). Replace with your real keys and uncomment.
