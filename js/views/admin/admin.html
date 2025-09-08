@@ -1,3 +1,4 @@
+
 <div class="container py-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <div class="d-flex align-items-center gap-2">
@@ -11,39 +12,22 @@
     </div>
   </div>
 
-  <div class="alert alert-info">Trang này chỉ dành cho Admin (demo UI).</div>
-
   <div class="row g-3">
-    <div class="col-lg-6">
+    <div class="col-lg-7">
       <div class="card shadow-sm border-0">
         <div class="card-body">
-          <h6 class="mb-2">Hàng đợi duyệt chi tiêu (Demo)</h6>
+          <h6 class="mb-2">Hàng đợi duyệt chi tiêu</h6>
           <div class="table-responsive">
             <table class="table table-sm align-middle">
-              <thead><tr><th>Thời gian</th><th>Mô tả</th><th>Người trả</th><th class="text-end">Số tiền</th><th>Hành động</th></tr></thead>
-              <tbody>
-                <tr>
-                  <td>2025-09-03 20:15</td><td>Mua nước ngọt</td><td>Hưng</td><td class="text-end">109.800 đ</td>
-                  <td>
-                    <button class="btn btn-success btn-sm" disabled>Duyệt</button>
-                    <button class="btn btn-outline-danger btn-sm" disabled>Từ chối</button>
-                  </td>
-                </tr>
-                <tr>
-                  <td>2025-09-03 14:22</td><td>Khăn giấy</td><td>B</td><td class="text-end">45.000 đ</td>
-                  <td>
-                    <button class="btn btn-success btn-sm" disabled>Duyệt</button>
-                    <button class="btn btn-outline-danger btn-sm" disabled>Từ chối</button>
-                  </td>
-                </tr>
-              </tbody>
+              <thead><tr><th>Thời gian</th><th>Mô tả</th><th>Người trả</th><th>Người yêu cầu</th><th class="text-end">Số tiền</th><th>Hành động</th></tr></thead>
+              <tbody id="pendingTbody"><tr><td colspan="6" class="text-muted">Đang tải…</td></tr></tbody>
             </table>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="col-lg-6">
+    <div class="col-lg-5">
       <div class="card shadow-sm border-0">
         <div class="card-body">
           <h6 class="mb-2">Tổng nợ theo người (Demo)</h6>
