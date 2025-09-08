@@ -1,11 +1,7 @@
-// Fill your Firebase config & ADMIN_UID. Keep this file as your single source of truth.
 /* global firebase */
 window.P102 = window.P102 || {};
-window.P102.FIREBASE = {
-  ADMIN_UID: "rVrRomrCGbPqPcrPddtBTpdcLoh2", // <-- put your admin UID here
-};
-
-//Example init (compat). Replace with your real keys and uncomment.
+window.P102.FIREBASE = { ADMIN_UID: "REPLACE_WITH_ADMIN_UID" };
+// Replace with your config then uncomment:
 const firebaseConfig = {
   apiKey: "AIzaSyA-NnpxWJL8hW1-vyCpNi7fUtQsL4NbzSA",
   authDomain: "quanlychitieu-3ce52.firebaseapp.com",

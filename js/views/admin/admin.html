@@ -1,48 +1,14 @@
 
 <div class="container py-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <div class="d-flex align-items-center gap-2">
-      <span class="brand">P102</span>
-      <span class="text-muted">/ Admin</span>
-    </div>
-    <div>
-      <a data-link href="/bills" class="nav-link d-inline px-2">Tiền nhà</a>
-      <a data-link href="/iou" class="nav-link d-inline px-2">Chi tiêu</a>
-      <button id="btnLogout" class="btn btn-outline-secondary btn-sm">Đăng xuất</button>
-    </div>
+    <div class="d-flex align-items-center gap-2"><span class="brand">P102</span><span class="text-muted">/ Admin</span></div>
+    <div><a data-link href="/bills" class="nav-link d-inline px-2">Tiền nhà</a><a data-link href="/iou" class="nav-link d-inline px-2">Chi tiêu</a><button id="btnLogout" class="btn btn-outline-secondary btn-sm">Đăng xuất</button></div>
   </div>
-
-  <div class="row g-3">
-    <div class="col-lg-7">
-      <div class="card shadow-sm border-0">
-        <div class="card-body">
-          <h6 class="mb-2">Hàng đợi duyệt chi tiêu</h6>
-          <div class="table-responsive">
-            <table class="table table-sm align-middle">
-              <thead><tr><th>Thời gian</th><th>Mô tả</th><th>Người trả</th><th>Người yêu cầu</th><th class="text-end">Số tiền</th><th>Hành động</th></tr></thead>
-              <tbody id="pendingTbody"><tr><td colspan="6" class="text-muted">Đang tải…</td></tr></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-lg-5">
-      <div class="card shadow-sm border-0">
-        <div class="card-body">
-          <h6 class="mb-2">Tổng nợ theo người (Demo)</h6>
-          <div class="table-responsive">
-            <table class="table table-sm">
-              <thead><tr><th>Thành viên</th><th class="text-end">Đang nợ</th></tr></thead>
-              <tbody>
-                <tr><td>Hưng</td><td class="text-end">1.950.000 đ</td></tr>
-                <tr><td>B</td><td class="text-end">1.720.200 đ</td></tr>
-                <tr><td>C</td><td class="text-end">1.710.000 đ</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  <div class="card shadow-sm border-0"><div class="card-body">
+    <h6 class="mb-2">Hàng đợi duyệt chi tiêu</h6>
+    <div class="table-responsive"><table class="table table-sm align-middle">
+      <thead><tr><th>Thời gian</th><th>Mô tả</th><th>Người trả</th><th>Người yêu cầu</th><th class="text-end">Số tiền</th><th>Hành động</th></tr></thead>
+      <tbody id="pendingTbody"><tr><td colspan="6" class="text-muted">Đang tải…</td></tr></tbody>
+    </table></div>
+  </div></div>
 </div>

@@ -1,94 +1,16 @@
-// js/core/router.js
-// SPA Router with Firebase Auth guard and Admin UID check (compat SDK).
-// Exposes window.navigate(path)
-
-const ADMIN_UID = (window.P102 && window.P102.FIREBASE && window.P102.FIREBASE.ADMIN_UID) || null;
-
-const routes = {
-  '/login':     { view: '/js/views/login/login.html',       script: '/js/views/login/login.js',       guard: 'public' },
-  '/dashboard': { view: '/js/views/dashboard/dashboard.html', script: '/js/views/dashboard/dashboard.js', guard: 'user'   },
-  '/admin':     { view: '/js/views/admin/admin.html',       script: '/js/views/admin/admin.js',       guard: 'admin'  },
-  '/bills':     { view: '/js/views/bills/bills.html',       script: '/js/views/bills/bills.js',       guard: 'user'   },
-  '/bills/:ym': { view: '/js/views/bills/bill-detail.html', script: '/js/views/bills/bill-detail.js', guard: 'user'   },
-  '/iou':       { view: '/js/views/iou/iou.html',           script: '/js/views/iou/iou.js',           guard: 'user'   },
-  '/404':       { view: '/js/views/not-found/404.html',     script: null,                              guard: 'public' },
-};
-
-function getCurrentUser() {
-  return new Promise((resolve) => {
-    if (!(window.firebase && firebase.auth)) return resolve(null);
-    const unsub = firebase.auth().onAuthStateChanged((u) => { unsub(); resolve(u); });
-  });
-}
-
-function isAdminUser(user) {
-  return !!(user && ADMIN_UID && user.uid === ADMIN_UID);
-}
-
-function matchRoute(path) {
-  if (routes[path]) return { key: path, params: {} };
-  const m = path.match(/^\/bills\/(\d{4}-\d{2})$/);
-  if (m) return { key: '/bills/:ym', params: { ym: m[1] } };
-  return { key: '/404', params: {} };
-}
-
-async function guardCheck(routeKey) {
-  const route = routes[routeKey] || routes['/404'];
-  const guard = route.guard || 'public';
-  if (guard === 'public') return { ok: true };
-  const user = await getCurrentUser();
-  if (!user) return { ok: false, redirect: '/login' };
-  if (guard === 'user') return { ok: true, user };
-  if (guard === 'admin') return isAdminUser(user) ? { ok: true, user } : { ok: false, redirect: '/dashboard' };
-  return { ok: true, user };
-}
-
-async function loadHTML(url) {
-  const res = await fetch(url, { cache: 'no-cache' });
-  if (!res.ok) throw new Error('Failed to load view: ' + url);
-  return res.text();
-}
-
-async function loadRoute(path) {
-  const { key, params } = matchRoute(path);
-  const guard = await guardCheck(key);
-  const finalKey = guard.ok ? key : (guard.redirect || '/login');
-  const route = routes[finalKey];
-
-  const html = await loadHTML(route.view);
-  const app = document.getElementById('app');
-  app.innerHTML = html;
-
-  document.querySelectorAll('a[data-link]').forEach(a => {
-    a.setAttribute('data-active', a.getAttribute('href') === finalKey ? 'true' : 'false');
-  });
-
-  if (route.script) {
-    const module = await import(route.script + '?v=' + Date.now());
-    if (module && typeof module.init === 'function') {
-      module.init({ params, user: guard.user || null, navigate });
-    }
-  }
-}
-
-function navigate(path) {
-  history.pushState({}, '', path);
-  loadRoute(path);
-}
-
-document.addEventListener('click', (e) => {
-  const a = e.target.closest('a[data-link]');
-  if (a && a.getAttribute('href')) {
-    e.preventDefault();
-    navigate(a.getAttribute('href'));
-  }
-});
-
-window.onpopstate = () => loadRoute(location.pathname);
-
-document.addEventListener('DOMContentLoaded', async () => {
-  const currentPath = location.pathname === '/' ? '/dashboard' : location.pathname;
-  await loadRoute(currentPath);
-});
-
-window.navigate = navigate;
+const ADMIN_UID=(window.P102&&window.P102.FIREBASE&&window.P102.FIREBASE.ADMIN_UID)||null;
+const routes={
+ '/login':{view:'/js/views/login/login.html',script:'/js/views/login/login.js',guard:'public'},
+ '/dashboard':{view:'/js/views/dashboard/dashboard.html',script:'/js/views/dashboard/dashboard.js',guard:'user'},
+ '/admin':{view:'/js/views/admin/admin.html',script:'/js/views/admin/admin.js',guard:'admin'},
+ '/bills':{view:'/js/views/bills/bills.html',script:'/js/views/bills/bills.js',guard:'user'},
+ '/bills/:ym':{view:'/js/views/bills/bill-detail.html',script:'/js/views/bills/bill-detail.js',guard:'user'},
+ '/iou':{view:'/js/views/iou/iou.html',script:'/js/views/iou/iou.js',guard:'user'},
+ '/404':{view:'/js/views/not-found/404.html',script:null,guard:'public'},};
+function getUser(){return new Promise(r=>{if(!(window.firebase&&firebase.auth))return r(null);const u=firebase.auth().onAuthStateChanged(x=>{u();r(x)})})}
+function isAdmin(u){return !!(u&&ADMIN_UID&&u.uid===ADMIN_UID)}
+function match(p){if(routes[p])return{key:p,params:{}};const m=p.match(/^\/bills\/(\d{4}-\d{2})$/);if(m)return{key:'/bills/:ym',params:{ym:m[1]}};return{key:'/404',params:{}}}
+async function guard(k){const rt=routes[k]||routes['/404'];const g=rt.guard||'public';if(g==='public')return{ok:true};const u=await getUser();if(!u)return{ok:false,redirect:'/login'};if(g==='user')return{ok:true,user:u};if(g==='admin')return isAdmin(u)?{ok:true,user:u}:{ok:false,redirect:'/dashboard'};return{ok:true,user:u}}
+async function loadHTML(u){const r=await fetch(u,{cache:'no-cache'});if(!r.ok)throw new Error('load fail:'+u);return r.text()}
+async function load(p){const {key,params}=match(p);const g=await guard(key);const fk=g.ok?key:(g.redirect||'/login');const rt=routes[fk];const html=await loadHTML(rt.view);document.getElementById('app').innerHTML=html;if(rt.script){const m=await import(rt.script+'?v='+Date.now());if(m&&typeof m.init==='function')m.init({params,user:g.user||null,navigate})}}
+function navigate(p){history.pushState({},'',p);load(p)};document.addEventListener('click',e=>{const a=e.target.closest('a[data-link]');if(a&&a.getAttribute('href')){e.preventDefault();navigate(a.getAttribute('href'))}});window.onpopstate=()=>load(location.pathname);document.addEventListener('DOMContentLoaded',()=>load(location.pathname==='/'?'/dashboard':location.pathname));window.navigate=navigate;

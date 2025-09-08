@@ -1,1 +1,1 @@
-export function init(){ /* demo */ }
+export function init(){}

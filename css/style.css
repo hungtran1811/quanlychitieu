@@ -1,15 +1,1 @@
-
-:root { --accent:#2f7ae5; }
-body { background:#f7f8fa; }
-.table td, .table th { vertical-align: middle; }
-.badge { font-weight: 600; }
-.nav-link[data-active="true"] { color: var(--accent) !important; font-weight:700; }
-.card-total { font-size: 1.6rem; font-weight: 700; }
-.brand { display:inline-block; font-weight:800; font-size:1.1rem; letter-spacing:.5px; color:#2f2f2f; }
-/* UI polish */
-.card { border-radius: .8rem; }
-.border { border-color: #eaecef !important; }
-.table-hover tbody tr:hover { background: #f9fbff; }
-.btn-primary { background: #2f7ae5; border-color: #2f7ae5; }
-.btn-outline-primary { border-color: #2f7ae5; color: #2f7ae5; }
-.btn-outline-primary:hover { background:#2f7ae5; color:#fff; }
+:root{--accent:#2f7ae5;}body{background:#f7f8fa}.brand{font-weight:800;letter-spacing:.4px}.card{border-radius:.8rem}.table-hover tbody tr:hover{background:#f9fbff}.btn-primary{background:#2f7ae5;border-color:#2f7ae5}

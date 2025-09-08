@@ -1,5 +1,0 @@
-
-# Firestore Indexes (tạo thủ công trong Console)
-1) iouRequests: Composite (status asc, createdAt desc)
-2) debts:      Composite (userId asc, createdAt desc)
-3) bills:      Composite (month asc, createdAt desc) [tuỳ chọn]
