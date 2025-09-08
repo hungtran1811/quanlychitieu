@@ -1,6 +1,6 @@
 /* global firebase */
 window.P102 = window.P102 || {};
-window.P102.FIREBASE = { ADMIN_UID: "REPLACE_WITH_ADMIN_UID" };
+window.P102.FIREBASE = { ADMIN_UID: "rVrRomrCGbPqPcrPddtBTpdcLoh2" };
 // Replace with your config then uncomment:
 const firebaseConfig = {
   apiKey: "AIzaSyA-NnpxWJL8hW1-vyCpNi7fUtQsL4NbzSA",
