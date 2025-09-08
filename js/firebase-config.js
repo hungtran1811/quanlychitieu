@@ -1,14 +1,11 @@
-// Replace with your real Firebase config + init. Keep file name stable.
+// Fill your Firebase config & ADMIN_UID. Keep this file as your single source of truth.
 /* global firebase */
-// If you use compat SDK, ensure scripts are loaded before this file.
-
 window.P102 = window.P102 || {};
 window.P102.FIREBASE = {
-  ADMIN_UID: "rVrRomrCGbPqPcrPddtBTpdcLoh2", // <-- replace with your actual admin UID
+  ADMIN_UID: "REPLACE_WITH_YOUR_ADMIN_UID", // <-- put your admin UID here
 };
 
-// Example (compat) init. Uncomment and fill your config:
-
+//Example init (compat). Replace with your real keys and uncomment.
 const firebaseConfig = {
   apiKey: "AIzaSyA-NnpxWJL8hW1-vyCpNi7fUtQsL4NbzSA",
   authDomain: "quanlychitieu-3ce52.firebaseapp.com",

@@ -1,3 +1,1 @@
-export function init() {
-  // Placeholder; hook Firestore later
-}
+export function init(){ /* demo */ }

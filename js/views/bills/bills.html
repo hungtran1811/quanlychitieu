@@ -1,22 +1,29 @@
 <div class="container py-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <div class="d-flex align-items-center gap-2">
-      <span class="fw-bold">P102</span>
-      <strong>Tiền nhà</strong>
+      <span class="brand">P102</span>
+      <span class="text-muted">/ Tiền nhà</span>
     </div>
     <div>
       <a data-link href="/dashboard" class="nav-link d-inline px-2">Dashboard</a>
-      <a data-link href="/bills" class="nav-link d-inline px-2">Tiền nhà</a>
       <a data-link href="/iou" class="nav-link d-inline px-2">Chi tiêu</a>
     </div>
   </div>
-  <div class="card shadow-sm">
+
+  <div class="card shadow-sm border-0">
     <div class="card-body">
-      <p class="text-muted">Danh sách/tháng (sẽ kết nối Firestore sau). Chọn một tháng để xem chi tiết.</p>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="mb-0">Danh sách tháng (Demo)</h6>
+        <button class="btn btn-secondary btn-sm" disabled>+ Tạo tháng mới</button>
+      </div>
       <ul id="billList" class="list-group">
         <li class="list-group-item d-flex justify-content-between align-items-center">
           2025-09
           <a data-link href="/bills/2025-09" class="btn btn-sm btn-outline-primary">Xem</a>
+        </li>
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          2025-08
+          <a data-link href="/bills/2025-08" class="btn btn-sm btn-outline-primary">Xem</a>
         </li>
       </ul>
     </div>

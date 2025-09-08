@@ -1,3 +1,1 @@
-export function init() {
-  // Placeholder
-}
+export function init(){ /* demo */ }
