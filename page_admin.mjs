@@ -1,6 +1,5 @@
-// page_admin.mjs — v3.4
-// Fix chia đều "Tiền nhà": loại admin khỏi debtor, chuẩn hóa splits theo participants đã chọn, không dồn vào người cuối.
-// Thêm CRUD trong tab Tổng quan: xem/sửa/xóa splits theo từng cặp và tháng.
+// page_admin.mjs — v3.4.1
+// UI: modal scrollable, no layout shift. House: even split with remainder. Overview unchanged (CRUD kept).
 
 import { auth } from "./firebase.mjs";
 import { bindAuthUI, signOutNow, isAdmin } from "./auth.mjs";
@@ -45,51 +44,64 @@ function loadPendingExpenses() {
   });
 }
 
-// Ensure splits even and correct
+// Even-share helper with remainder distribution (VND integers)
+function evenShares(total, count){
+  const base = Math.floor(Number(total)/count);
+  let rem = Number(total) - base*count; // distribute +1 to first 'rem' people
+  return Array.from({length: count}, (_,i)=> base + (i<rem ? 1:0));
+}
+
 async function normalizeAndApproveSplits(expenseId){
   const expSnap = await getDoc(doc(db, "expenses", expenseId));
   if (!expSnap.exists()) return;
   const exp = expSnap.data();
   const payerId = exp.ownerId;
-  // participantsAll dùng để tính chia đều (bao gồm admin nếu admin tick)
-  const participantsAll = Array.isArray(exp.participants)? exp.participants.filter(uid => !!uid) : [];
-  const participantsDebtors = participantsAll.filter(uid => uid !== payerId);
-  const peopleCount = Math.max(1, participantsAll.length); // chia đều theo số người ở tháng này
-  const share = Math.round((Number(exp.amount||0) / peopleCount) * 100) / 100;
+  const participantsAll = Array.isArray(exp.participants)? exp.participants.filter(Boolean): [];
+  const debtors = participantsAll.filter(uid => uid !== payerId);
+  const peopleCount = Math.max(1, participantsAll.length);
+  const shares = evenShares(Math.round(Number(exp.amount||0)), peopleCount); // integer VND
+  // map debtor uid -> share (use first N shares for debtors; payer implicitly pays 1 share)
+  const debtorShares = {};
+  let idx=0;
+  for (const uid of participantsAll){
+    if (uid === payerId) continue;
+    debtorShares[uid] = shares[idx++];
+  }
 
   const spSnap = await getDocs(query(collection(db,"splits"), where("expenseId","==", expenseId)));
   const existing = new Map();
   spSnap.forEach(d => existing.set(d.data().debtorId, { id:d.id, ...d.data() }));
 
   const tasks = [];
-  // Xoá mọi split có debtor == payer (không để admin thành debtor)
+  // Remove any split where debtor==payer (no admin debt)
   if (existing.has(payerId)){
-    tasks.push(deleteDoc(doc(db, "splits", existing.get(payerId).id)));
+    tasks.push(deleteDoc(doc(db,"splits", existing.get(payerId).id)));
     existing.delete(payerId);
   }
-  // Reject các split không thuộc participantsDebtors (nếu có)
+  // Reject splits not in current debtor list
   existing.forEach((val, debtorId) => {
-    if (!participantsDebtors.includes(debtorId)){
+    if (!debtors.includes(debtorId)){
       tasks.push(updateDoc(doc(db,"splits", val.id), { status:"rejected", updatedAt: serverTimestamp() }));
       existing.delete(debtorId);
     }
   });
-  // Tạo hoặc chuẩn hóa share cho từng debtor
-  for (const debtorId of participantsDebtors){
-    const cur = existing.get(debtorId);
+  // Create/normalize
+  for (const uid of debtors){
+    const share = debtorShares[uid] ?? Math.round(Number(exp.amount||0)/peopleCount);
+    const cur = existing.get(uid);
     if (!cur){
       tasks.push(addDoc(collection(db,"splits"), {
-        expenseId: expenseId, payerId, debtorId,
-        shareAmount: share, status: "pending",
+        expenseId: expenseId, payerId, debtorId: uid,
+        shareAmount: share, status:"pending",
         monthKey: exp.monthKey, createdAt: serverTimestamp()
       }));
-    } else if (cur.shareAmount !== share || cur.status !== "pending"){
+    } else {
       tasks.push(updateDoc(doc(db,"splits", cur.id), { shareAmount: share, status:"pending", updatedAt: serverTimestamp() }));
     }
   }
   await Promise.all(tasks);
 
-  // Approve tất cả splits của expense
+  // Approve all splits
   const afterSnap = await getDocs(query(collection(db,"splits"), where("expenseId","==", expenseId)));
   await Promise.all(afterSnap.docs.map(d => updateDoc(doc(db,"splits", d.id), { status:"approved", updatedAt: serverTimestamp() })));
 }
@@ -109,7 +121,7 @@ document.addEventListener("click", async (e) => {
   }
 });
 
-// ---- House tab (live preview + create)
+// ---- House tab (unchanged create but relies on approve-normalize)
 function numberVN(x){ return fmt.format(Math.max(0, Math.round(Number(x)||0))); }
 
 async function initHouseForm() {
@@ -149,7 +161,7 @@ function calcPreview(){
   const trashWifi = 150000;
   const total = electric + water + trashWifi + extraSum;
   const share = Math.round((total/people)*100)/100;
-  return { electric, water, trashWifi, extraSum, total, share, people };
+  return { electric, water, trashWifi, extraSum, total, share };
 }
 function updatePreview(){
   const r = calcPreview();
@@ -180,7 +192,6 @@ async function submitHouse(ev) {
   const res = calcHouseTotal(eOld, eNew, peopleCount, extraSum);
 
   const admin = auth.currentUser;
-  // Lưu participants là toàn bộ người ở tháng này (bao gồm admin nếu tick)
   const expRef = await addDoc(collection(db, "expenses"), {
     ownerId: admin.uid, amount: res.total, category: `Tiền nhà ${month}`,
     note: `điện(${eNew}-${eOld}), nước(${peopleCount}), rác+wifi(150k)`,
@@ -188,13 +199,12 @@ async function submitHouse(ev) {
     status:"pending", monthKey: month, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
   });
 
-  // share = tổng / số người (bao gồm admin), nhưng chỉ tạo splits cho debtor != admin
-  const share = Math.round((res.total/peopleCount)*100)/100;
+  // Create initial splits (pending) for all debtors (exclude admin). Shares normalized at approve time.
   const debtors = participantsAll.filter(uid => uid !== admin.uid);
   const tasks = [];
   for (const uid of debtors) {
     tasks.push(addDoc(collection(db,"splits"), {
-      expenseId: expRef.id, payerId: admin.uid, debtorId: uid, shareAmount: share,
+      expenseId: expRef.id, payerId: admin.uid, debtorId: uid, shareAmount: 0,
       status:"pending", monthKey: month, createdAt: serverTimestamp()
     }));
   }
@@ -203,7 +213,7 @@ async function submitHouse(ev) {
   updatePreview();
 }
 
-// ---- Settle requests
+// ---- Settle requests (same)
 const reqBody = document.getElementById("reqBody");
 function loadSettleRequests() {
   const qy = query(collection(db,"payRequests"), where("status","==","pending"), where("settleAll","==",true), orderBy("createdAt","desc"));
@@ -231,7 +241,7 @@ document.addEventListener("click", async (e)=>{
   if (r) await updateDoc(doc(db,"payRequests", r.getAttribute("data-reject-pay")), { status:"rejected", updatedAt: serverTimestamp() });
 });
 
-// ---- Tổng quan công nợ + CRUD
+// ---- Tổng quan công nợ + CRUD (unchanged from v3.4 but modal scrollable via CSS)
 function initOverview(){
   const ov = document.getElementById("ovMonth");
   const mk = monthKeyFromDate();
@@ -293,7 +303,6 @@ async function buildOverview(monthKey){
   });
 }
 
-// Modal pair details: list underlying splits (edit/delete)
 let pairModalInstance = null;
 document.addEventListener("click", async (e)=>{
   const btn = e.target.closest("[data-open-pair]");
@@ -304,10 +313,10 @@ document.addEventListener("click", async (e)=>{
 
 async function openPairModal(debtor, payer, monthKey){
   const names = await getNameMap();
-  document.getElementById("pairTitle").textContent = `${names[debtor]||debtor} ↔ ${names[payer]||payer} • Tháng ${monthKey}`;
+  const title = document.getElementById("pairTitle");
+  if (title) title.textContent = `${names[debtor]||debtor} ↔ ${names[payer]||payer} • Tháng ${monthKey}`;
   const body = document.getElementById("pairBody"); body.innerHTML = "<tr><td colspan='7'>Đang tải…</td></tr>";
 
-  // lấy cả hai chiều trong tháng
   const [sAB, sBA] = await Promise.all([
     getDocs(query(collection(db,"splits"), where("monthKey","==",monthKey), where("debtorId","==",debtor), where("payerId","==",payer))),
     getDocs(query(collection(db,"splits"), where("monthKey","==",monthKey), where("debtorId","==",payer), where("payerId","==",debtor)))
@@ -334,11 +343,12 @@ async function openPairModal(debtor, payer, monthKey){
     });
   }
   const el = document.getElementById("pairModal");
-  pairModalInstance = bootstrap.Modal.getOrCreateInstance(el);
-  pairModalInstance.show();
+  if (typeof bootstrap !== "undefined") {
+    pairModalInstance = bootstrap.Modal.getOrCreateInstance(el);
+    pairModalInstance.show();
+  }
 }
 
-// Save / Delete split in modal
 document.addEventListener("click", async (e)=>{
   const save = e.target.closest("[data-save-split]");
   const del = e.target.closest("[data-del-split]");

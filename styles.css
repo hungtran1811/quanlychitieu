@@ -1,7 +1,6 @@
-/* v3.2 UI polish: avoid CLS, fix tables */
+/* Patch v3.4.1 – modal & layout stability */
 :root { scrollbar-gutter: stable both-edges; }
+body.modal-open { padding-right: 0 !important; } /* avoid Bootstrap adding PR that shifts layout */
+.modal { --bs-modal-margin: 1.5rem; }
+.modal-dialog.modal-dialog-scrollable .modal-content { max-height: calc(100vh - 3rem); }
 .table-fixed { table-layout: fixed; }
-.min-h { min-height: 114px; }
-.row-item{display:flex;justify-content:space-between;align-items:center;border:1px solid #e9ecef;border-radius:.5rem;padding:.5rem .75rem;margin-bottom:.5rem;background:#fff;}
-.list-compact > .row-item:last-child{margin-bottom:0;}
-.modal-open .navbar{padding-right:0 !important;}
