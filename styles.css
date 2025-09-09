@@ -1,6 +1,7 @@
-/* Patch v3.4.1 – modal & layout stability */
+/* Patch v3.4.2 – modal centered & no layout shift */
 :root { scrollbar-gutter: stable both-edges; }
-body.modal-open { padding-right: 0 !important; } /* avoid Bootstrap adding PR that shifts layout */
+body.modal-open { padding-right: 0 !important; }
 .modal { --bs-modal-margin: 1.5rem; }
-.modal-dialog.modal-dialog-scrollable .modal-content { max-height: calc(100vh - 3rem); }
+.modal-dialog-centered { align-items: center; }
+.modal-dialog-scrollable .modal-content { max-height: calc(100vh - 3rem); }
 .table-fixed { table-layout: fixed; }

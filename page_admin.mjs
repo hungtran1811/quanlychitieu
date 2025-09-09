@@ -1,5 +1,6 @@
-// page_admin.mjs — v3.4.1
-// UI: modal scrollable, no layout shift. House: even split with remainder. Overview unchanged (CRUD kept).
+// page_admin.mjs — v3.4.2
+// UI: modal centered + scrollable. House approve: correct even split per-person (including payer), then map to debtors;
+// also deduplicate splits per debtor.
 
 import { auth } from "./firebase.mjs";
 import { bindAuthUI, signOutNow, isAdmin } from "./auth.mjs";
@@ -44,11 +45,19 @@ function loadPendingExpenses() {
   });
 }
 
-// Even-share helper with remainder distribution (VND integers)
-function evenShares(total, count){
-  const base = Math.floor(Number(total)/count);
-  let rem = Number(total) - base*count; // distribute +1 to first 'rem' people
-  return Array.from({length: count}, (_,i)=> base + (i<rem ? 1:0));
+// Build exact per-person shares (VND ints), then return mapping debtor->share (exclude payer)
+function perPersonShares(total, participantsAll, payerId){
+  const n = participantsAll.length;
+  const base = Math.floor(Number(total)/n);
+  let rem = Number(total) - base*n;
+  const perUid = {};
+  participantsAll.forEach((uid, i)=>{
+    perUid[uid] = base + (i < rem ? 1:0);
+  });
+  // Now map to debtors (exclude payer)
+  const map = {};
+  participantsAll.forEach(uid => { if (uid !== payerId) map[uid] = perUid[uid]; });
+  return map;
 }
 
 async function normalizeAndApproveSplits(expenseId){
@@ -57,51 +66,50 @@ async function normalizeAndApproveSplits(expenseId){
   const exp = expSnap.data();
   const payerId = exp.ownerId;
   const participantsAll = Array.isArray(exp.participants)? exp.participants.filter(Boolean): [];
-  const debtors = participantsAll.filter(uid => uid !== payerId);
-  const peopleCount = Math.max(1, participantsAll.length);
-  const shares = evenShares(Math.round(Number(exp.amount||0)), peopleCount); // integer VND
-  // map debtor uid -> share (use first N shares for debtors; payer implicitly pays 1 share)
-  const debtorShares = {};
-  let idx=0;
-  for (const uid of participantsAll){
-    if (uid === payerId) continue;
-    debtorShares[uid] = shares[idx++];
-  }
+  if (!participantsAll.length) return;
+  const debtorShareMap = perPersonShares(Math.round(Number(exp.amount||0)), participantsAll, payerId);
+  const debtorList = Object.keys(debtorShareMap);
 
   const spSnap = await getDocs(query(collection(db,"splits"), where("expenseId","==", expenseId)));
-  const existing = new Map();
-  spSnap.forEach(d => existing.set(d.data().debtorId, { id:d.id, ...d.data() }));
+  // Group by debtor (dedupe)
+  const byDebtor = {};
+  spSnap.forEach(d => {
+    const x=d.data(); const uid=x.debtorId;
+    if (!byDebtor[uid]) byDebtor[uid]=[]; byDebtor[uid].push({id:d.id, ...x});
+  });
 
   const tasks = [];
-  // Remove any split where debtor==payer (no admin debt)
-  if (existing.has(payerId)){
-    tasks.push(deleteDoc(doc(db,"splits", existing.get(payerId).id)));
-    existing.delete(payerId);
+  // Remove any split where debtor==payer
+  if (byDebtor[payerId]){
+    byDebtor[payerId].forEach(s => tasks.push(deleteDoc(doc(db,"splits", s.id))));
+    delete byDebtor[payerId];
   }
-  // Reject splits not in current debtor list
-  existing.forEach((val, debtorId) => {
-    if (!debtors.includes(debtorId)){
-      tasks.push(updateDoc(doc(db,"splits", val.id), { status:"rejected", updatedAt: serverTimestamp() }));
-      existing.delete(debtorId);
+  // Reject all splits that are not in debtorList
+  Object.keys(byDebtor).forEach(uid => {
+    if (!debtorList.includes(uid)){
+      byDebtor[uid].forEach(s => tasks.push(updateDoc(doc(db,"splits", s.id), { status:"rejected", updatedAt: serverTimestamp() })));
+      delete byDebtor[uid];
     }
   });
-  // Create/normalize
-  for (const uid of debtors){
-    const share = debtorShares[uid] ?? Math.round(Number(exp.amount||0)/peopleCount);
-    const cur = existing.get(uid);
-    if (!cur){
+  // For each debtor, keep one split, delete duplicates, and set correct share+status
+  for (const uid of debtorList){
+    const targetAmount = debtorShareMap[uid];
+    if (!byDebtor[uid] || byDebtor[uid].length===0){
       tasks.push(addDoc(collection(db,"splits"), {
         expenseId: expenseId, payerId, debtorId: uid,
-        shareAmount: share, status:"pending",
+        shareAmount: targetAmount, status:"pending",
         monthKey: exp.monthKey, createdAt: serverTimestamp()
       }));
     } else {
-      tasks.push(updateDoc(doc(db,"splits", cur.id), { shareAmount: share, status:"pending", updatedAt: serverTimestamp() }));
+      // keep first, delete others
+      const [keep, ...dups] = byDebtor[uid];
+      tasks.push(updateDoc(doc(db,"splits", keep.id), { shareAmount: targetAmount, status:"pending", updatedAt: serverTimestamp() }));
+      dups.forEach(s => tasks.push(deleteDoc(doc(db,"splits", s.id))));
     }
   }
   await Promise.all(tasks);
 
-  // Approve all splits
+  // Approve all splits of this expense
   const afterSnap = await getDocs(query(collection(db,"splits"), where("expenseId","==", expenseId)));
   await Promise.all(afterSnap.docs.map(d => updateDoc(doc(db,"splits", d.id), { status:"approved", updatedAt: serverTimestamp() })));
 }
@@ -121,7 +129,7 @@ document.addEventListener("click", async (e) => {
   }
 });
 
-// ---- House tab (unchanged create but relies on approve-normalize)
+// ---- House tab (create; preview code giữ nguyên như 3.4.1)
 function numberVN(x){ return fmt.format(Math.max(0, Math.round(Number(x)||0))); }
 
 async function initHouseForm() {
@@ -199,7 +207,7 @@ async function submitHouse(ev) {
     status:"pending", monthKey: month, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
   });
 
-  // Create initial splits (pending) for all debtors (exclude admin). Shares normalized at approve time.
+  // Create skeleton splits for debtors (exclude admin). Amounts will be finalized in approval.
   const debtors = participantsAll.filter(uid => uid !== admin.uid);
   const tasks = [];
   for (const uid of debtors) {
@@ -213,7 +221,7 @@ async function submitHouse(ev) {
   updatePreview();
 }
 
-// ---- Settle requests (same)
+// ---- Settle requests
 const reqBody = document.getElementById("reqBody");
 function loadSettleRequests() {
   const qy = query(collection(db,"payRequests"), where("status","==","pending"), where("settleAll","==",true), orderBy("createdAt","desc"));
@@ -241,7 +249,7 @@ document.addEventListener("click", async (e)=>{
   if (r) await updateDoc(doc(db,"payRequests", r.getAttribute("data-reject-pay")), { status:"rejected", updatedAt: serverTimestamp() });
 });
 
-// ---- Tổng quan công nợ + CRUD (unchanged from v3.4 but modal scrollable via CSS)
+// ---- Tổng quan công nợ + CRUD (giữ như 3.4, modal đã centered)
 function initOverview(){
   const ov = document.getElementById("ovMonth");
   const mk = monthKeyFromDate();
