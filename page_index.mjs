@@ -1,4 +1,4 @@
-// page_index.mjs (v3) – settle-all + faster listeners
+// page_index.mjs – patch v3.1: fix settleAll query typo
 import { auth, db, collection, addDoc, serverTimestamp, onAuthStateChanged, query, where, orderBy, limit, onSnapshot, doc, deleteDoc, getDocs, updateDoc } from "./firebase.mjs";
 import { bindAuthUI, signInGoogle, signOutNow } from "./auth.mjs";
 import { fmt, monthKeyFromDate, renderUserChips, uidSelected, userMap } from "./utils.mjs";
@@ -10,7 +10,6 @@ document.getElementById("btnLogout")?.addEventListener("click", signOutNow);
 const mk = monthKeyFromDate();
 document.getElementById("monthKey").textContent = mk;
 
-// cache users once
 let _usersCache = null, _nameMap = {};
 async function fetchUsersOnce() {
   if (_usersCache) return _usersCache;
@@ -19,8 +18,6 @@ async function fetchUsersOnce() {
   _nameMap = userMap(_usersCache);
   return _usersCache;
 }
-
-// participants for form + list for settle modal
 async function initParticipants(currentUid) {
   await fetchUsersOnce();
   renderUserChips(document.getElementById("participants"), _usersCache, currentUid);
@@ -34,7 +31,6 @@ async function initParticipants(currentUid) {
 }
 onAuthStateChanged(auth, (user) => { if (user) initParticipants(user.uid); });
 
-// create expense (pending)
 document.getElementById("formExpense")?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const user = auth.currentUser;
@@ -68,7 +64,6 @@ document.getElementById("formExpense")?.addEventListener("submit", async (e) => 
   alert("Đã tạo khoản chi (pending). Admin sẽ duyệt.");
 });
 
-// my expenses (only latest 50 for speed)
 let unsubMine=null;
 function listenMyExpenses() {
   const user = auth.currentUser; if (!user) return;
@@ -100,21 +95,17 @@ document.addEventListener("click", async (e)=>{
   }
 });
 
-// debt views with settle-all logic
-let unsubPayer=null, unsubDebtor=null, unsubSettleIn=null, unsubSettleOut=null;
+let unsubPayer=null, unsubDebtor=null, unsubSettleIn=null, unsubSettleOut=null, unsubIncoming=null;
 function listenDebt() {
   const user = auth.currentUser; if (!user) return;
-  // splits where I am payer (they owe me)
   unsubPayer = onSnapshot(
     query(collection(db,"splits"), where("payerId","==",user.uid), where("status","==","approved"), where("monthKey","==",mk)),
     (snap) => updateTheyOwe(snap)
   );
-  // splits where I am debtor (I owe)
   unsubDebtor = onSnapshot(
     query(collection(db,"splits"), where("debtorId","==",user.uid), where("status","==","approved"), where("monthKey","==",mk)),
     (snap) => updateIOwe(snap)
   );
-  // approved settle-all requests (both directions)
   unsubSettleIn = onSnapshot(
     query(collection(db,"payRequests"), where("toUid","==",user.uid), where("status","==","approved"), where("monthKey","==",mk), where("settleAll","==",true)),
     (snap) => { _approvedToMe = parseSettlePairs(snap); renderDebts(); }
@@ -122,6 +113,24 @@ function listenDebt() {
   unsubSettleOut = onSnapshot(
     query(collection(db,"payRequests"), where("fromUid","==",user.uid), where("status","==","approved"), where("monthKey","==",mk), where("settleAll","==",true)),
     (snap) => { _approvedFromMe = parseSettlePairs(snap); renderDebts(); }
+  );
+  unsubIncoming = onSnapshot(
+    query(collection(db,"payRequests"), where("toUid","==",user.uid), where("status","==","pending"), where("monthKey","==",mk), where("settleAll","==",true), orderBy("createdAt","desc")),
+    (snap) => {
+      const cont = document.getElementById("incomingReqs"); cont.innerHTML="";
+      snap.forEach(docu => {
+        const d=docu.data();
+        const tr=document.createElement("tr");
+        tr.innerHTML = `<td>${_nameMap[d.fromUid]||d.fromUid}</td>
+          <td>${d.note||""}</td>
+          <td>${d.createdAt?.toDate?.().toLocaleString("vi-VN")||"-"}</td>
+          <td>
+            <button class="btn btn-sm btn-success me-1" data-approve-req="${docu.id}">Chấp nhận</button>
+            <button class="btn btn-sm btn-outline-danger" data-reject-req="${docu.id}">Từ chối</button>
+          </td>`;
+        cont.appendChild(tr);
+      });
+    }
   );
 }
 onAuthStateChanged(auth, () => listenDebt());
@@ -151,7 +160,6 @@ function renderDebts() {
   const theyC = document.getElementById("theyOweList");
   const iC = document.getElementById("iOweList");
   theyC.innerHTML=""; iC.innerHTML="";
-  // They owe me
   Object.keys(_theyOweRaw).forEach(uid => {
     const settled = pairSettled(me, uid);
     const val = settled ? 0 : _theyOweRaw[uid];
@@ -160,7 +168,6 @@ function renderDebts() {
     row.innerHTML = `<div>${_nameMap[uid]||uid}</div><div class="fw-semibold">${fmt.format(val)}</div>`;
     theyC.appendChild(row);
   });
-  // I owe them
   Object.keys(_iOweRaw).forEach(uid => {
     const settled = pairSettled(me, uid);
     const val = settled ? 0 : _iOweRaw[uid];
@@ -175,7 +182,6 @@ function renderDebts() {
   });
 }
 
-// open settle modal
 let reqModal;
 document.getElementById("btnOpenSettle")?.addEventListener("click", () => {
   reqModal = bootstrap.Modal.getOrCreateInstance(document.getElementById("reqModal"));
@@ -191,7 +197,6 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// send settle-all request
 document.getElementById("btnSendReq")?.addEventListener("click", async () => {
   const user = auth.currentUser; if (!user) return alert("Hãy đăng nhập");
   const toUid = document.getElementById("toUid").value;
@@ -204,31 +209,6 @@ document.getElementById("btnSendReq")?.addEventListener("click", async () => {
   });
   reqModal?.hide(); document.getElementById("formRequest").reset();
 });
-
-// incoming settle-all requests for me (creditor)
-let unsubIncoming=null;
-function listenIncoming() {
-  const user = auth.currentUser; if (!user) return;
-  unsubIncoming = onSnapshot(
-    query(collection(db,"payRequests"), where("toUid","==",user.uid), where("status","==","pending"), where("monthKey","==",mk), where("settleAll","==",true"), orderBy("createdAt","desc")),
-    (snap) => {
-      const cont = document.getElementById("incomingReqs"); cont.innerHTML="";
-      snap.forEach(docu => {
-        const d=docu.data();
-        const tr=document.createElement("tr");
-        tr.innerHTML = `<td>${_nameMap[d.fromUid]||d.fromUid}</td>
-          <td>${d.note||""}</td>
-          <td>${d.createdAt?.toDate?.().toLocaleString("vi-VN")||"-"}</td>
-          <td>
-            <button class="btn btn-sm btn-success me-1" data-approve-req="${docu.id}">Chấp nhận</button>
-            <button class="btn btn-sm btn-outline-danger" data-reject-req="${docu.id}">Từ chối</button>
-          </td>`;
-        cont.appendChild(tr);
-      });
-    }
-  );
-}
-onAuthStateChanged(auth, () => listenIncoming());
 
 document.addEventListener("click", async (e)=>{
   const a = e.target.closest("[data-approve-req]");
