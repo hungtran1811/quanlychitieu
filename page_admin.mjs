@@ -1,8 +1,8 @@
-// page_admin.mjs
+// page_admin.mjs – admin can also approve settle-all requests
 import { auth } from "./firebase.mjs";
 import { bindAuthUI, signOutNow, isAdmin } from "./auth.mjs";
 import { db, collection, query, where, orderBy, onSnapshot, updateDoc, doc, getDocs, addDoc, serverTimestamp } from "./firebase.mjs";
-import { fmt, renderUserChips, uidSelected } from "./utils.mjs";
+import { fmt, renderUserChips } from "./utils.mjs";
 
 bindAuthUI();
 document.getElementById("btnLogout")?.addEventListener("click", signOutNow);
@@ -11,19 +11,15 @@ auth.onAuthStateChanged((u) => {
   if (!u || !isAdmin(u)) {
     alert("Bạn không có quyền truy cập Admin"); window.location.href = "./index.html";
   } else {
-    loadPending();
+    loadPendingExpenses();
     initHouseForm();
-    loadRequests();
+    loadSettleRequests();
   }
 });
 
-async function fetchUsers() {
-  const snap = await getDocs(collection(db, "users"));
-  return snap.docs.map(d => d.data());
-}
-
+// ---- expenses approvals
 const pendingBody = document.getElementById("pendingBody");
-function loadPending() {
+function loadPendingExpenses() {
   const qy = query(collection(db, "expenses"), where("status","==","pending"), orderBy("createdAt","desc"));
   onSnapshot(qy, (snap) => {
     pendingBody.innerHTML = "";
@@ -44,7 +40,6 @@ function loadPending() {
     });
   });
 }
-
 document.addEventListener("click", async (e) => {
   const a = e.target.closest("[data-approve-exp]"); const r = e.target.closest("[data-reject-exp]");
   if (a) {
@@ -63,13 +58,13 @@ document.addEventListener("click", async (e) => {
   }
 });
 
+// ---- house bill
 async function initHouseForm() {
-  const users = await fetchUsers();
+  const users = await getDocs(collection(db, "users")).then(s=>s.docs.map(d=>d.data()));
   renderUserChips(document.getElementById("houseParticipants"), users);
-  document.getElementById("btnAddExtra").addEventListener("click", addExtraRow);
-  document.getElementById("formHouse").addEventListener("submit", submitHouse);
+  document.getElementById("btnAddExtra")?.addEventListener("click", addExtraRow);
+  document.getElementById("formHouse")?.addEventListener("submit", submitHouse);
 }
-
 let extraIdx = 0;
 function addExtraRow() {
   const cont = document.getElementById("extras");
@@ -83,7 +78,6 @@ function addExtraRow() {
   cont.appendChild(row);
   row.querySelector("[data-remove]").addEventListener("click", ()=> row.remove());
 }
-
 function calcHouseTotal(eOld, eNew, peopleCount, extraSum) {
   const electric = (eNew - eOld) * 3800;
   const water = 100000 * peopleCount;
@@ -91,7 +85,6 @@ function calcHouseTotal(eOld, eNew, peopleCount, extraSum) {
   const total = electric + water + trashWifi + extraSum;
   return { electric, water, trashWifi, total };
 }
-
 async function submitHouse(ev) {
   ev.preventDefault();
   const month = document.getElementById("houseMonth").value;
@@ -128,9 +121,10 @@ async function submitHouse(ev) {
   alert("Đã tạo khoản tiền nhà (pending). Vào tab Phê duyệt để duyệt.");
 }
 
+// ---- settle-all approvals (admin view)
 const reqBody = document.getElementById("reqBody");
-function loadRequests() {
-  const qy = query(collection(db,"payRequests"), where("status","==","pending"), orderBy("createdAt","desc"));
+function loadSettleRequests() {
+  const qy = query(collection(db,"payRequests"), where("status","==","pending"), where("settleAll","==",true), orderBy("createdAt","desc"));
   onSnapshot(qy, (snap) => {
     reqBody.innerHTML="";
     snap.forEach(docu=>{
@@ -138,19 +132,17 @@ function loadRequests() {
       const tr=document.createElement("tr");
       tr.innerHTML=`<td>${d.fromUid.slice(0,6)}</td>
         <td>${d.toUid.slice(0,6)}</td>
-        <td>${fmt.format(d.amount)}</td>
+        <td>${d.monthKey}</td>
         <td>${d.note||""}</td>
         <td>${d.createdAt?.toDate?.().toLocaleString("vi-VN")||"-"}</td>
         <td>
-          <button class="btn btn-sm btn-success me-1" data-approve-pay="${docu.id}">Duyệt</button>
+          <button class="btn btn-sm btn-success me-1" data-approve-pay="${docu.id}">Chấp nhận</button>
           <button class="btn btn-sm btn-outline-danger" data-reject-pay="${docu.id}">Từ chối</button>
         </td>`;
       reqBody.appendChild(tr);
     });
   });
 }
-loadRequests();
-
 document.addEventListener("click", async (e)=>{
   const a = e.target.closest("[data-approve-pay]");
   const r = e.target.closest("[data-reject-pay]");

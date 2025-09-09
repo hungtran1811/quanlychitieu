@@ -1,4 +1,4 @@
-// auth.mjs
+// auth.mjs – cache-first, minimal DOM work
 import { auth, Provider, signInWithPopup, signOut, onAuthStateChanged, db, doc, getDoc, setDoc, serverTimestamp, ADMIN_UID } from "./firebase.mjs";
 
 export function isAdmin(user) { return user && user.uid === ADMIN_UID; }

@@ -1,36 +1,40 @@
-// page_index.mjs
+// page_index.mjs (v3) – settle-all + faster listeners
 import { auth, db, collection, addDoc, serverTimestamp, onAuthStateChanged, query, where, orderBy, limit, onSnapshot, doc, deleteDoc, getDocs, updateDoc } from "./firebase.mjs";
-import { bindAuthUI, signInGoogle, signOutNow, isAdmin } from "./auth.mjs";
+import { bindAuthUI, signInGoogle, signOutNow } from "./auth.mjs";
 import { fmt, monthKeyFromDate, renderUserChips, uidSelected, userMap } from "./utils.mjs";
 
 bindAuthUI();
 document.getElementById("btnLogin")?.addEventListener("click", signInGoogle);
 document.getElementById("btnLogout")?.addEventListener("click", signOutNow);
 
-const monthLabel = document.getElementById("monthKey");
-monthLabel.textContent = monthKeyFromDate();
+const mk = monthKeyFromDate();
+document.getElementById("monthKey").textContent = mk;
 
-async function fetchUsers() {
+// cache users once
+let _usersCache = null, _nameMap = {};
+async function fetchUsersOnce() {
+  if (_usersCache) return _usersCache;
   const snap = await getDocs(collection(db, "users"));
-  return snap.docs.map(d => d.data());
+  _usersCache = snap.docs.map(d=>d.data());
+  _nameMap = userMap(_usersCache);
+  return _usersCache;
 }
 
+// participants for form + list for settle modal
 async function initParticipants(currentUid) {
-  const users = await fetchUsers();
-  renderUserChips(document.getElementById("participants"), users, currentUid);
-
+  await fetchUsersOnce();
+  renderUserChips(document.getElementById("participants"), _usersCache, currentUid);
   const sel = document.getElementById("toUid");
   sel.innerHTML = "";
-  const map = userMap(users);
-  Object.entries(map).forEach(([uid, name]) => {
+  Object.entries(_nameMap).forEach(([uid, name]) => {
     if (uid !== currentUid) {
       const opt = document.createElement("option"); opt.value = uid; opt.textContent = name; sel.appendChild(opt);
     }
   });
 }
-
 onAuthStateChanged(auth, (user) => { if (user) initParticipants(user.uid); });
 
+// create expense (pending)
 document.getElementById("formExpense")?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const user = auth.currentUser;
@@ -45,7 +49,7 @@ document.getElementById("formExpense")?.addEventListener("submit", async (e) => 
   const expRef = await addDoc(collection(db, "expenses"), {
     ownerId: user.uid, amount, category, note,
     participants: parts, splitMode: "equal",
-    status: "pending", monthKey: monthKeyFromDate(),
+    status: "pending", monthKey: mk,
     createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
   });
 
@@ -55,7 +59,7 @@ document.getElementById("formExpense")?.addEventListener("submit", async (e) => 
     if (uid === user.uid) continue;
     tasks.push(addDoc(collection(db, "splits"), {
       expenseId: expRef.id, payerId: user.uid, debtorId: uid,
-      shareAmount: share, status: "pending", monthKey: monthKeyFromDate(),
+      shareAmount: share, status: "pending", monthKey: mk,
       createdAt: serverTimestamp(),
     }));
   }
@@ -64,15 +68,15 @@ document.getElementById("formExpense")?.addEventListener("submit", async (e) => 
   alert("Đã tạo khoản chi (pending). Admin sẽ duyệt.");
 });
 
-const body = document.getElementById("myExpenses");
-let unsubMine = null;
+// my expenses (only latest 50 for speed)
+let unsubMine=null;
 function listenMyExpenses() {
-  const user = auth.currentUser;
-  if (!user || !body) return;
+  const user = auth.currentUser; if (!user) return;
+  const tbody = document.getElementById("myExpenses");
   if (unsubMine) unsubMine();
-  const qy = query(collection(db, "expenses"), where("ownerId", "==", user.uid), orderBy("createdAt", "desc"), limit(100));
+  const qy = query(collection(db,"expenses"), where("ownerId","==",user.uid), orderBy("createdAt","desc"), limit(50));
   unsubMine = onSnapshot(qy, (snap) => {
-    body.innerHTML = "";
+    const frag = document.createDocumentFragment();
     snap.forEach(docu => {
       const d = docu.data();
       const tr = document.createElement("tr");
@@ -81,87 +85,138 @@ function listenMyExpenses() {
         <td>${d.category}</td>
         <td>${fmt.format(d.amount)}</td>
         <td>${(d.participants||[]).length}</td>
-        <td>${d.createdAt?.toDate?.().toLocaleString("vi-VN") || "-"}</td>
-        <td>${d.status==='pending'?`<button class="btn btn-sm btn-outline-danger" data-del="${docu.id}">Hủy</button>`:""}</td>
-      `;
-      body.appendChild(tr);
+        <td>${d.createdAt?.toDate?.().toLocaleString("vi-VN")||"-"}</td>
+        <td>${d.status==='pending'?`<button class="btn btn-sm btn-outline-danger" data-del="${docu.id}">Hủy</button>`:""}</td>`;
+      frag.appendChild(tr);
     });
+    tbody.innerHTML=""; tbody.appendChild(frag);
   });
 }
 onAuthStateChanged(auth, () => listenMyExpenses());
-
-document.addEventListener("click", async (e) => {
+document.addEventListener("click", async (e)=>{
   const btn = e.target.closest("[data-del]");
-  if (btn) {
-    const id = btn.getAttribute("data-del");
-    if (confirm("Hủy khoản chi đang chờ duyệt?")) await deleteDoc(doc(db, "expenses", id));
+  if (btn) { const id = btn.getAttribute("data-del");
+    if (confirm("Hủy khoản chi đang chờ duyệt?")) await deleteDoc(doc(db,"expenses",id));
   }
 });
 
-let unsub1=null, unsub2=null, unpayIn=null;
-async function listenDebtViews() {
+// debt views with settle-all logic
+let unsubPayer=null, unsubDebtor=null, unsubSettleIn=null, unsubSettleOut=null;
+function listenDebt() {
   const user = auth.currentUser; if (!user) return;
-  const mk = monthKeyFromDate();
-  const users = await fetchUsers(); const nameMap = userMap(users);
-
-  unsub1 = onSnapshot(
+  // splits where I am payer (they owe me)
+  unsubPayer = onSnapshot(
     query(collection(db,"splits"), where("payerId","==",user.uid), where("status","==","approved"), where("monthKey","==",mk)),
-    async (snap) => {
-      const byDebtor = {};
-      snap.forEach(s => {
-        const d = s.data();
-        byDebtor[d.debtorId] = (byDebtor[d.debtorId]||0) + (d.shareAmount||0);
-      });
-      const paySnap = await getDocs(query(collection(db,"payRequests"), where("toUid","==",user.uid), where("status","==","approved"), where("monthKey","==",mk)));
-      const paid = {};
-      paySnap.forEach(p => { const d=p.data(); paid[d.fromUid]=(paid[d.fromUid]||0)+(d.amount||0); });
-      const cont = document.getElementById("theyOweList");
-      cont.innerHTML = "";
-      Object.keys(byDebtor).forEach(uid => {
-        const outstanding = Math.max(0, Math.round((byDebtor[uid] - (paid[uid]||0))*100)/100);
-        const row = document.createElement("div");
-        row.className = "d-flex justify-content-between align-items-center border rounded-3 p-2 mb-2";
-        row.innerHTML = `<div>${nameMap[uid]||uid}</div><div class="fw-semibold">${fmt.format(outstanding)}</div>`;
-        cont.appendChild(row);
-      });
-    }
+    (snap) => updateTheyOwe(snap)
   );
-
-  unsub2 = onSnapshot(
+  // splits where I am debtor (I owe)
+  unsubDebtor = onSnapshot(
     query(collection(db,"splits"), where("debtorId","==",user.uid), where("status","==","approved"), where("monthKey","==",mk)),
-    async (snap) => {
-      const byPayer = {};
-      snap.forEach(s => {
-        const d=s.data();
-        byPayer[d.payerId]=(byPayer[d.payerId]||0)+(d.shareAmount||0);
-      });
-      const paySnap = await getDocs(query(collection(db,"payRequests"), where("fromUid","==",user.uid), where("status","==","approved"), where("monthKey","==",mk)));
-      const paid = {}; paySnap.forEach(p=>{const d=p.data(); paid[d.toUid]=(paid[d.toUid]||0)+(d.amount||0); });
-      const cont = document.getElementById("iOweList");
-      cont.innerHTML = "";
-      Object.keys(byPayer).forEach(uid => {
-        const outstanding = Math.max(0, Math.round((byPayer[uid] - (paid[uid]||0))*100)/100);
-        const row = document.createElement("div");
-        row.className = "d-flex justify-content-between align-items-center border rounded-3 p-2 mb-2";
-        row.innerHTML = `<div>${nameMap[uid]||uid}</div>
-          <div>
-            <span class="fw-semibold me-2">${fmt.format(outstanding)}</span>
-            <button class="btn btn-sm btn-outline-primary" data-openreq="${uid}" data-amount="${outstanding}">Yêu cầu trả nợ</button>
-          </div>`;
-        cont.appendChild(row);
-      });
-    }
+    (snap) => updateIOwe(snap)
   );
+  // approved settle-all requests (both directions)
+  unsubSettleIn = onSnapshot(
+    query(collection(db,"payRequests"), where("toUid","==",user.uid), where("status","==","approved"), where("monthKey","==",mk), where("settleAll","==",true)),
+    (snap) => { _approvedToMe = parseSettlePairs(snap); renderDebts(); }
+  );
+  unsubSettleOut = onSnapshot(
+    query(collection(db,"payRequests"), where("fromUid","==",user.uid), where("status","==","approved"), where("monthKey","==",mk), where("settleAll","==",true)),
+    (snap) => { _approvedFromMe = parseSettlePairs(snap); renderDebts(); }
+  );
+}
+onAuthStateChanged(auth, () => listenDebt());
 
-  unpayIn = onSnapshot(
-    query(collection(db,"payRequests"), where("toUid","==",user.uid), where("status","==","pending"), orderBy("createdAt","desc")),
+let _theyOweRaw={}, _iOweRaw={}, _approvedToMe=new Set(), _approvedFromMe=new Set();
+function parseSettlePairs(snap) {
+  const s = new Set();
+  snap.forEach(d => { const x=d.data(); const pair = [x.fromUid,x.toUid].sort().join("_"); s.add(pair); });
+  return s;
+}
+function updateTheyOwe(snap) {
+  _theyOweRaw = {};
+  snap.forEach(s => { const d=s.data(); _theyOweRaw[d.debtorId]=( _theyOweRaw[d.debtorId]||0 ) + (d.shareAmount||0); });
+  renderDebts();
+}
+function updateIOwe(snap) {
+  _iOweRaw = {};
+  snap.forEach(s => { const d=s.data(); _iOweRaw[d.payerId]=( _iOweRaw[d.payerId]||0 ) + (d.shareAmount||0); });
+  renderDebts();
+}
+function pairSettled(uidA, uidB) {
+  const key = [uidA, uidB].sort().join("_");
+  return _approvedToMe.has(key) || _approvedFromMe.has(key);
+}
+function renderDebts() {
+  const me = auth.currentUser?.uid; if (!me) return;
+  const theyC = document.getElementById("theyOweList");
+  const iC = document.getElementById("iOweList");
+  theyC.innerHTML=""; iC.innerHTML="";
+  // They owe me
+  Object.keys(_theyOweRaw).forEach(uid => {
+    const settled = pairSettled(me, uid);
+    const val = settled ? 0 : _theyOweRaw[uid];
+    const row = document.createElement("div");
+    row.className = "d-flex justify-content-between align-items-center border rounded-3 p-2 mb-2";
+    row.innerHTML = `<div>${_nameMap[uid]||uid}</div><div class="fw-semibold">${fmt.format(val)}</div>`;
+    theyC.appendChild(row);
+  });
+  // I owe them
+  Object.keys(_iOweRaw).forEach(uid => {
+    const settled = pairSettled(me, uid);
+    const val = settled ? 0 : _iOweRaw[uid];
+    const row = document.createElement("div");
+    row.className = "d-flex justify-content-between align-items-center border rounded-3 p-2 mb-2";
+    row.innerHTML = `<div>${_nameMap[uid]||uid}</div>
+      <div>
+        <span class="fw-semibold me-2">${fmt.format(val)}</span>
+        <button class="btn btn-sm btn-outline-primary" data-openreq="${uid}">Thanh toán nợ</button>
+      </div>`;
+    iC.appendChild(row);
+  });
+}
+
+// open settle modal
+let reqModal;
+document.getElementById("btnOpenSettle")?.addEventListener("click", () => {
+  reqModal = bootstrap.Modal.getOrCreateInstance(document.getElementById("reqModal"));
+  reqModal.show();
+});
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-openreq]");
+  if (btn) {
+    const to = btn.getAttribute("data-openreq");
+    document.getElementById("toUid").value = to;
+    reqModal = bootstrap.Modal.getOrCreateInstance(document.getElementById("reqModal"));
+    reqModal.show();
+  }
+});
+
+// send settle-all request
+document.getElementById("btnSendReq")?.addEventListener("click", async () => {
+  const user = auth.currentUser; if (!user) return alert("Hãy đăng nhập");
+  const toUid = document.getElementById("toUid").value;
+  const note = document.getElementById("reqNote").value.trim();
+  if (!toUid) return alert("Chọn người đối ứng");
+  await addDoc(collection(db,"payRequests"), {
+    fromUid: user.uid, toUid, note,
+    status:"pending", monthKey: mk, settleAll: true,
+    createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+  });
+  reqModal?.hide(); document.getElementById("formRequest").reset();
+});
+
+// incoming settle-all requests for me (creditor)
+let unsubIncoming=null;
+function listenIncoming() {
+  const user = auth.currentUser; if (!user) return;
+  unsubIncoming = onSnapshot(
+    query(collection(db,"payRequests"), where("toUid","==",user.uid), where("status","==","pending"), where("monthKey","==",mk), where("settleAll","==",true"), orderBy("createdAt","desc")),
     (snap) => {
       const cont = document.getElementById("incomingReqs"); cont.innerHTML="";
       snap.forEach(docu => {
-        const d = docu.data();
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${nameMap[d.fromUid]||d.fromUid}</td>
-          <td>${fmt.format(d.amount)}</td>
+        const d=docu.data();
+        const tr=document.createElement("tr");
+        tr.innerHTML = `<td>${_nameMap[d.fromUid]||d.fromUid}</td>
           <td>${d.note||""}</td>
           <td>${d.createdAt?.toDate?.().toLocaleString("vi-VN")||"-"}</td>
           <td>
@@ -173,44 +228,11 @@ async function listenDebtViews() {
     }
   );
 }
-onAuthStateChanged(auth, () => listenDebtViews());
-
-let reqModal;
-document.addEventListener("click", (e) => {
-  const btn = e.target.closest("[data-openreq]");
-  if (btn) {
-    const to = btn.getAttribute("data-openreq");
-    const amount = Number(btn.getAttribute("data-amount")||0);
-    const sel = document.getElementById("toUid");
-    sel.value = to;
-    document.getElementById("reqAmount").value = amount;
-    reqModal = bootstrap.Modal.getOrCreateInstance(document.getElementById("reqModal"));
-    reqModal.show();
-  }
-});
-
-document.getElementById("btnSendReq")?.addEventListener("click", async () => {
-  const user = auth.currentUser; if (!user) return alert("Hãy đăng nhập");
-  const toUid = document.getElementById("toUid").value;
-  const amount = Number(document.getElementById("reqAmount").value||0);
-  const note = document.getElementById("reqNote").value.trim();
-  if (!toUid || amount<=0) return alert("Chọn người nhận và số tiền hợp lệ");
-  await addDoc(collection(db,"payRequests"), {
-    fromUid: user.uid, toUid, amount, note,
-    status: "pending", monthKey: monthKeyFromDate(),
-    createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
-  });
-  reqModal?.hide();
-  document.getElementById("formRequest").reset();
-});
+onAuthStateChanged(auth, () => listenIncoming());
 
 document.addEventListener("click", async (e)=>{
   const a = e.target.closest("[data-approve-req]");
   const r = e.target.closest("[data-reject-req]");
-  if (a) {
-    await updateDoc(doc(db,"payRequests", a.getAttribute("data-approve-req")), { status:"approved", updatedAt: serverTimestamp() });
-  }
-  if (r) {
-    await updateDoc(doc(db,"payRequests", r.getAttribute("data-reject-req")), { status:"rejected", updatedAt: serverTimestamp() });
-  }
+  if (a) await updateDoc(doc(db,"payRequests", a.getAttribute("data-approve-req")), { status:"approved", updatedAt: serverTimestamp() });
+  if (r) await updateDoc(doc(db,"payRequests", r.getAttribute("data-reject-req")), { status:"rejected", updatedAt: serverTimestamp() });
 });

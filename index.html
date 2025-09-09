@@ -72,6 +72,9 @@
               </div>
             </div>
           </div>
+          <div class="mt-3 text-end">
+            <button class="btn btn-primary btn-sm" id="btnOpenSettle">Thanh toán nợ…</button>
+          </div>
         </div>
       </div>
     </div>
@@ -79,10 +82,10 @@
     <div class="col-12">
       <div class="card">
         <div class="card-body">
-          <h5 class="card-title">Yêu cầu người khác trả bạn</h5>
+          <h5 class="card-title">Yêu cầu thanh toán nợ gửi đến bạn</h5>
           <div class="table-responsive">
             <table class="table table-sm">
-              <thead><tr><th>Từ</th><th>Số tiền</th><th>Ghi chú</th><th>Thời gian</th><th></th></tr></thead>
+              <thead><tr><th>Từ</th><th>Ghi chú</th><th>Thời gian</th><th></th></tr></thead>
               <tbody id="incomingReqs"></tbody>
             </table>
           </div>
@@ -92,27 +95,25 @@
   </div>
 </main>
 
+<!-- Modal tạo yêu cầu THANH TOÁN NỢ (settle all) -->
 <div class="modal fade" id="reqModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Yêu cầu trả nợ</h5>
+        <h5 class="modal-title">Thanh toán nợ (xóa nợ giữa 2 bên)</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
         <form id="formRequest">
           <div class="mb-2">
-            <label class="form-label">Người nhận (creditor)</label>
+            <label class="form-label">Bên đối ứng</label>
             <select id="toUid" class="form-select"></select>
           </div>
           <div class="mb-2">
-            <label class="form-label">Số tiền</label>
-            <input id="reqAmount" type="number" class="form-control" min="0" step="1000" required>
-          </div>
-          <div class="mb-2">
             <label class="form-label">Ghi chú</label>
-            <input id="reqNote" class="form-control" placeholder="VD: Trả nợ ăn tối ...">
+            <input id="reqNote" class="form-control" placeholder="VD: Đã chuyển khoản, xóa nợ tháng này">
           </div>
+          <div class="form-text">Khi bên kia <b>chấp nhận</b>, công nợ giữa 2 người trong tháng sẽ về <b>0</b>.</div>
         </form>
       </div>
       <div class="modal-footer">

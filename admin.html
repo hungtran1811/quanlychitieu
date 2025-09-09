@@ -25,7 +25,7 @@
       <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-house" type="button">Tiền nhà</button>
     </li>
     <li class="nav-item" role="presentation">
-      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-requests" type="button">Yêu cầu trả nợ</button>
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-requests" type="button">Thanh toán nợ</button>
     </li>
   </ul>
 
@@ -77,10 +77,10 @@
     </div>
 
     <div class="tab-pane fade" id="tab-requests">
-      <h5>Yêu cầu trả nợ (pending)</h5>
+      <h5>Yêu cầu thanh toán nợ (settle all, pending)</h5>
       <div class="table-responsive">
         <table class="table table-sm">
-          <thead><tr><th>Từ (debtor)</th><th>Đến (creditor)</th><th>Số tiền</th><th>Ghi chú</th><th>Thời gian</th><th></th></tr></thead>
+          <thead><tr><th>Bên A</th><th>Bên B</th><th>Tháng</th><th>Ghi chú</th><th>Thời gian</th><th></th></tr></thead>
           <tbody id="reqBody"></tbody>
         </table>
       </div>
