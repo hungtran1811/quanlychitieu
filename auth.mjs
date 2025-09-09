@@ -12,7 +12,6 @@ export async function signOutNow() {
   try { await signOut(auth); } catch (e) { alert("Đăng xuất lỗi: " + e.message); }
 }
 
-// Ensure user doc
 async function ensureUserDoc(user) {
   const ref = doc(db, "users", user.uid);
   const snap = await getDoc(ref);

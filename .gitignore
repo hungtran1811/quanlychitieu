@@ -1,0 +1,7 @@
+# Bỏ toàn bộ thư mục rules và nội dung bên trong
+rules/
+
+# Nếu bạn có các file nhạy cảm khác cũng muốn ẩn thì thêm vào
+.env
+node_modules/
+dist/

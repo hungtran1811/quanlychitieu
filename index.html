@@ -57,24 +57,18 @@
     <div class="col-lg-6">
       <div class="card h-100">
         <div class="card-body">
-          <h5 class="card-title">Tổng quan tháng <span id="monthKey"></span></h5>
+          <h5 class="card-title">Công nợ tháng <span id="monthKey"></span></h5>
           <div class="row g-3">
-            <div class="col-4">
+            <div class="col-12">
               <div class="p-3 bg-white border rounded-3">
-                <div class="small text-muted">Tôi nợ</div>
-                <div class="fs-4 fw-bold" id="iOwe">0</div>
+                <div class="fw-semibold mb-2">Ai nợ bạn</div>
+                <div id="theyOweList" class="small"></div>
               </div>
             </div>
-            <div class="col-4">
+            <div class="col-12">
               <div class="p-3 bg-white border rounded-3">
-                <div class="small text-muted">Họ nợ tôi</div>
-                <div class="fs-4 fw-bold" id="theyOwe">0</div>
-              </div>
-            </div>
-            <div class="col-4">
-              <div class="p-3 bg-white border rounded-3">
-                <div class="small text-muted">Số dư</div>
-                <div class="fs-4 fw-bold" id="balance">0</div>
+                <div class="fw-semibold mb-2">Bạn đang nợ ai</div>
+                <div id="iOweList" class="small"></div>
               </div>
             </div>
           </div>
@@ -85,11 +79,11 @@
     <div class="col-12">
       <div class="card">
         <div class="card-body">
-          <h5 class="card-title">Khoản chi của tôi</h5>
+          <h5 class="card-title">Yêu cầu người khác trả bạn</h5>
           <div class="table-responsive">
-            <table class="table table-sm align-middle">
-              <thead><tr><th>Trạng thái</th><th>Danh mục</th><th>Số tiền</th><th>Người đi cùng</th><th>Thời gian</th><th></th></tr></thead>
-              <tbody id="myExpenses"></tbody>
+            <table class="table table-sm">
+              <thead><tr><th>Từ</th><th>Số tiền</th><th>Ghi chú</th><th>Thời gian</th><th></th></tr></thead>
+              <tbody id="incomingReqs"></tbody>
             </table>
           </div>
         </div>
@@ -97,6 +91,37 @@
     </div>
   </div>
 </main>
+
+<div class="modal fade" id="reqModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Yêu cầu trả nợ</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formRequest">
+          <div class="mb-2">
+            <label class="form-label">Người nhận (creditor)</label>
+            <select id="toUid" class="form-select"></select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Số tiền</label>
+            <input id="reqAmount" type="number" class="form-control" min="0" step="1000" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Ghi chú</label>
+            <input id="reqNote" class="form-control" placeholder="VD: Trả nợ ăn tối ...">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+        <button class="btn btn-primary" id="btnSendReq">Gửi yêu cầu</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script type="module" src="./page_index.mjs"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

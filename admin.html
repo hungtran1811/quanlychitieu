@@ -19,16 +19,19 @@
 <main class="container my-4">
   <ul class="nav nav-tabs" id="adminTabs" role="tablist">
     <li class="nav-item" role="presentation">
-      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-approve" type="button">Phê duyệt</button>
+      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-approve" type="button">Phê duyệt chi tiêu</button>
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-house" type="button">Tiền nhà</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-requests" type="button">Yêu cầu trả nợ</button>
     </li>
   </ul>
 
   <div class="tab-content border border-top-0 rounded-bottom bg-white p-3">
     <div class="tab-pane fade show active" id="tab-approve">
-      <h5>Hàng đợi phê duyệt</h5>
+      <h5>Hàng đợi chi tiêu</h5>
       <div class="table-responsive">
         <table class="table table-sm">
           <thead><tr><th>Người chi</th><th>Danh mục</th><th>Số tiền</th><th>Người đi cùng</th><th>Thời gian</th><th></th></tr></thead>
@@ -71,6 +74,16 @@
         </div>
       </form>
       <div class="alert alert-info mt-3" id="housePreview" style="display:none"></div>
+    </div>
+
+    <div class="tab-pane fade" id="tab-requests">
+      <h5>Yêu cầu trả nợ (pending)</h5>
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead><tr><th>Từ (debtor)</th><th>Đến (creditor)</th><th>Số tiền</th><th>Ghi chú</th><th>Thời gian</th><th></th></tr></thead>
+          <tbody id="reqBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </main>

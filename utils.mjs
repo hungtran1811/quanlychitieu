@@ -24,3 +24,8 @@ export function renderUserChips(container, users, currentUid=null) {
     container.appendChild(div);
   });
 }
+
+export function userMap(users) {
+  const map = {}; users.forEach(u => map[u.uid] = (u.displayName || u.email || u.uid));
+  return map;
+}
