@@ -29,6 +29,9 @@
     <li class="nav-item" role="presentation">
       <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-requests" type="button">Thanh toán nợ</button>
     </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-overview" type="button">Tổng quan công nợ</button>
+    </li>
   </ul>
 
   <div class="tab-content border border-top-0 rounded-bottom bg-white p-3">
@@ -70,6 +73,13 @@
           <div class="form-text">Rác + Wifi = 150,000 tự động cộng. Nước = 100,000 * số người.</div>
         </div>
         <div class="col-12">
+          <div id="housePreview" class="alert alert-info" role="alert">
+            <div><b>Tổng tạm tính:</b> <span id="pvTotal">0</span></div>
+            <div class="small text-muted">Điện: <span id="pvElectric">0</span> • Nước: <span id="pvWater">0</span> • Rác+Wifi: <span id="pvTrashWifi">150,000</span> • Bổ sung: <span id="pvExtras">0</span></div>
+            <div><b>Chia đều mỗi người:</b> <span id="pvShare">0</span></div>
+          </div>
+        </div>
+        <div class="col-12">
           <button class="btn btn-success" type="submit">Tạo khoản chi tiền nhà (pending)</button>
         </div>
       </form>
@@ -83,6 +93,23 @@
           <tbody id="reqBody"></tbody>
         </table>
       </div>
+    </div>
+
+    <div class="tab-pane fade" id="tab-overview">
+      <div class="d-flex align-items-end gap-2 mb-3">
+        <div>
+          <label class="form-label mb-1">Tháng</label>
+          <input id="ovMonth" type="month" class="form-control">
+        </div>
+        <button id="btnRefreshOverview" class="btn btn-outline-primary">Lấy dữ liệu</button>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm table-fixed">
+          <thead><tr><th style="width:35%">Người A (debtor)</th><th style="width:35%">Người B (payer)</th><th style="width:30%" class="text-end">A nợ B</th></tr></thead>
+          <tbody id="overviewBody"></tbody>
+        </table>
+      </div>
+      <div class="small text-muted">* Bảng này gộp tất cả `splits` đã duyệt theo tháng, netting hai chiều.</div>
     </div>
   </div>
 </main>
