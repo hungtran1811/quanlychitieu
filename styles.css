@@ -1,6 +1,6 @@
-/* Patch v3.4.2 – modal centered & no layout shift */
+/* v3.4.3 UI fixes */
 :root { scrollbar-gutter: stable both-edges; }
-body.modal-open { padding-right: 0 !important; }
+body.modal-open { padding-right: 0 !important; overflow-y: hidden; }
 .modal { --bs-modal-margin: 1.5rem; }
 .modal-dialog-centered { align-items: center; }
 .modal-dialog-scrollable .modal-content { max-height: calc(100vh - 3rem); }

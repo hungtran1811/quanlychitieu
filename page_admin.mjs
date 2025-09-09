@@ -1,6 +1,6 @@
-// page_admin.mjs — v3.4.2
-// UI: modal centered + scrollable. House approve: correct even split per-person (including payer), then map to debtors;
-// also deduplicate splits per debtor.
+// page_admin.mjs — v3.4.3
+// Hard-normalize: on approve, delete ALL splits of the expense, then recreate exactly for each debtor from participants.
+// Guarantees: mỗi người được tick (trừ payer) có đúng 1 split với share chính xác.
 
 import { auth } from "./firebase.mjs";
 import { bindAuthUI, signOutNow, isAdmin } from "./auth.mjs";
@@ -21,7 +21,7 @@ auth.onAuthStateChanged((u) => {
   }
 });
 
-// ---- approvals (pending expenses)
+// -------- Pending approvals
 const pendingBody = document.getElementById("pendingBody");
 function loadPendingExpenses() {
   const qy = query(collection(db, "expenses"), where("status","==","pending"), orderBy("createdAt","desc"));
@@ -45,82 +45,50 @@ function loadPendingExpenses() {
   });
 }
 
-// Build exact per-person shares (VND ints), then return mapping debtor->share (exclude payer)
-function perPersonShares(total, participantsAll, payerId){
+// Build per-person shares (int VND), then map to debtor->amount (exclude payer)
+function mapDebtorShares(total, participantsAll, payerId){
   const n = participantsAll.length;
   const base = Math.floor(Number(total)/n);
   let rem = Number(total) - base*n;
   const perUid = {};
-  participantsAll.forEach((uid, i)=>{
-    perUid[uid] = base + (i < rem ? 1:0);
-  });
-  // Now map to debtors (exclude payer)
+  // phân bổ dư theo thứ tự mảng participantsAll
+  participantsAll.forEach((uid, i)=> perUid[uid] = base + (i<rem?1:0));
   const map = {};
   participantsAll.forEach(uid => { if (uid !== payerId) map[uid] = perUid[uid]; });
   return map;
 }
 
-async function normalizeAndApproveSplits(expenseId){
+async function approveExpense(expenseId){
   const expSnap = await getDoc(doc(db, "expenses", expenseId));
   if (!expSnap.exists()) return;
   const exp = expSnap.data();
   const payerId = exp.ownerId;
   const participantsAll = Array.isArray(exp.participants)? exp.participants.filter(Boolean): [];
-  if (!participantsAll.length) return;
-  const debtorShareMap = perPersonShares(Math.round(Number(exp.amount||0)), participantsAll, payerId);
-  const debtorList = Object.keys(debtorShareMap);
+  if (!participantsAll.length) throw new Error("Không có participants trong expense.");
+  const debtorMap = mapDebtorShares(Math.round(Number(exp.amount||0)), participantsAll, payerId);
 
+  // 1) XÓA sạch splits cũ của expense
   const spSnap = await getDocs(query(collection(db,"splits"), where("expenseId","==", expenseId)));
-  // Group by debtor (dedupe)
-  const byDebtor = {};
-  spSnap.forEach(d => {
-    const x=d.data(); const uid=x.debtorId;
-    if (!byDebtor[uid]) byDebtor[uid]=[]; byDebtor[uid].push({id:d.id, ...x});
-  });
+  await Promise.all(spSnap.docs.map(d => deleteDoc(doc(db,"splits", d.id))));
 
+  // 2) TẠO lại đúng từng split theo debtorMap
   const tasks = [];
-  // Remove any split where debtor==payer
-  if (byDebtor[payerId]){
-    byDebtor[payerId].forEach(s => tasks.push(deleteDoc(doc(db,"splits", s.id))));
-    delete byDebtor[payerId];
-  }
-  // Reject all splits that are not in debtorList
-  Object.keys(byDebtor).forEach(uid => {
-    if (!debtorList.includes(uid)){
-      byDebtor[uid].forEach(s => tasks.push(updateDoc(doc(db,"splits", s.id), { status:"rejected", updatedAt: serverTimestamp() })));
-      delete byDebtor[uid];
-    }
+  Object.entries(debtorMap).forEach(([debtorId, amount]) => {
+    tasks.push(addDoc(collection(db,"splits"), {
+      expenseId: expenseId, payerId, debtorId,
+      shareAmount: amount, status:"approved",
+      monthKey: exp.monthKey, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+    }));
   });
-  // For each debtor, keep one split, delete duplicates, and set correct share+status
-  for (const uid of debtorList){
-    const targetAmount = debtorShareMap[uid];
-    if (!byDebtor[uid] || byDebtor[uid].length===0){
-      tasks.push(addDoc(collection(db,"splits"), {
-        expenseId: expenseId, payerId, debtorId: uid,
-        shareAmount: targetAmount, status:"pending",
-        monthKey: exp.monthKey, createdAt: serverTimestamp()
-      }));
-    } else {
-      // keep first, delete others
-      const [keep, ...dups] = byDebtor[uid];
-      tasks.push(updateDoc(doc(db,"splits", keep.id), { shareAmount: targetAmount, status:"pending", updatedAt: serverTimestamp() }));
-      dups.forEach(s => tasks.push(deleteDoc(doc(db,"splits", s.id))));
-    }
-  }
   await Promise.all(tasks);
 
-  // Approve all splits of this expense
-  const afterSnap = await getDocs(query(collection(db,"splits"), where("expenseId","==", expenseId)));
-  await Promise.all(afterSnap.docs.map(d => updateDoc(doc(db,"splits", d.id), { status:"approved", updatedAt: serverTimestamp() })));
+  // 3) Set expense approved
+  await updateDoc(doc(db, "expenses", expenseId), { status:"approved", updatedAt: serverTimestamp() });
 }
 
 document.addEventListener("click", async (e) => {
   const a = e.target.closest("[data-approve-exp]"); const r = e.target.closest("[data-reject-exp]");
-  if (a) {
-    const id = a.getAttribute("data-approve-exp");
-    try { await normalizeAndApproveSplits(id); await updateDoc(doc(db, "expenses", id), { status:"approved", updatedAt: serverTimestamp() }); }
-    catch(err){ alert("Duyệt lỗi: "+(err?.message||err)); }
-  }
+  if (a) { try { await approveExpense(a.getAttribute("data-approve-exp")); } catch(err){ alert("Duyệt lỗi: "+(err?.message||err)); } }
   if (r) {
     const id = r.getAttribute("data-reject-exp");
     await updateDoc(doc(db, "expenses", id), { status:"rejected", updatedAt: serverTimestamp() });
@@ -129,7 +97,7 @@ document.addEventListener("click", async (e) => {
   }
 });
 
-// ---- House tab (create; preview code giữ nguyên như 3.4.1)
+// -------- House form (preview + create skeleton)
 function numberVN(x){ return fmt.format(Math.max(0, Math.round(Number(x)||0))); }
 
 async function initHouseForm() {
@@ -168,7 +136,7 @@ function calcPreview(){
   const water = 100000 * people;
   const trashWifi = 150000;
   const total = electric + water + trashWifi + extraSum;
-  const share = Math.round((total/people)*100)/100;
+  const share = Math.round(total/people);
   return { electric, water, trashWifi, extraSum, total, share };
 }
 function updatePreview(){
@@ -207,21 +175,17 @@ async function submitHouse(ev) {
     status:"pending", monthKey: month, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
   });
 
-  // Create skeleton splits for debtors (exclude admin). Amounts will be finalized in approval.
+  // tạo skeleton splits (0đ) cho mỗi debtor ≠ admin — sẽ được recreate chuẩn khi duyệt
   const debtors = participantsAll.filter(uid => uid !== admin.uid);
-  const tasks = [];
-  for (const uid of debtors) {
-    tasks.push(addDoc(collection(db,"splits"), {
-      expenseId: expRef.id, payerId: admin.uid, debtorId: uid, shareAmount: 0,
-      status:"pending", monthKey: month, createdAt: serverTimestamp()
-    }));
-  }
-  await Promise.all(tasks);
+  await Promise.all(debtors.map(uid => addDoc(collection(db,"splits"), {
+    expenseId: expRef.id, payerId: admin.uid, debtorId: uid, shareAmount: 0,
+    status:"pending", monthKey: month, createdAt: serverTimestamp()
+  })));
   alert("Đã tạo khoản tiền nhà (pending). Vào tab Phê duyệt để duyệt.");
   updatePreview();
 }
 
-// ---- Settle requests
+// -------- Pay requests (giữ nguyên)
 const reqBody = document.getElementById("reqBody");
 function loadSettleRequests() {
   const qy = query(collection(db,"payRequests"), where("status","==","pending"), where("settleAll","==",true), orderBy("createdAt","desc"));
@@ -249,7 +213,7 @@ document.addEventListener("click", async (e)=>{
   if (r) await updateDoc(doc(db,"payRequests", r.getAttribute("data-reject-pay")), { status:"rejected", updatedAt: serverTimestamp() });
 });
 
-// ---- Tổng quan công nợ + CRUD (giữ như 3.4, modal đã centered)
+// -------- Overview + CRUD (giữ nguyên từ 3.4.2, modal CSS xử lý center/scroll)
 function initOverview(){
   const ov = document.getElementById("ovMonth");
   const mk = monthKeyFromDate();

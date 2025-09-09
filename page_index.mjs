@@ -1,36 +1,40 @@
-// page_index.mjs — patch v3.4.1 small: rebind listeners after approvals to reflect debts for all users
-import { auth, db, collection, addDoc, serverTimestamp, onAuthStateChanged, query, where, orderBy, limit, onSnapshot, doc, deleteDoc, getDocs, updateDoc } from "./firebase.mjs";
+// page_index.mjs — v3.4.3: ensure debts render for current month after admin changes
+import { auth, db, collection, query, where, onSnapshot } from "./firebase.mjs";
 import { bindAuthUI, signInGoogle, signOutNow } from "./auth.mjs";
-import { fmt, monthKeyFromDate, renderUserChips, uidSelected, userMap } from "./utils.mjs";
+import { fmt, monthKeyFromDate } from "./utils.mjs";
 
 bindAuthUI();
 document.getElementById("btnLogin")?.addEventListener("click", signInGoogle);
 document.getElementById("btnLogout")?.addEventListener("click", signOutNow);
 
 const mk = monthKeyFromDate();
-document.getElementById("monthKey").textContent = mk;
+document.getElementById("monthKey")?.textContent = mk;
 
-let _usersCache = null, _nameMap = {};
-async function fetchUsersOnce() {
-  if (_usersCache) return _usersCache;
-  const snap = await getDocs(collection(db, "users"));
-  _usersCache = snap.docs.map(d=>d.data());
-  _nameMap = userMap(_usersCache);
-  return _usersCache;
+function renderList(el, map){
+  if (!el) return;
+  const entries = Object.entries(map).sort((a,b)=> b[1]-a[1]);
+  el.innerHTML = entries.length ? entries.map(([name,amt]) => `<div class="d-flex justify-content-between"><span>${name}</span><span>${fmt.format(amt)}</span></div>`).join("") : "<div class='text-muted'>—</div>";
 }
-async function initParticipants(currentUid) {
-  await fetchUsersOnce();
-  renderUserChips(document.getElementById("participants"), _usersCache, currentUid);
-  const sel = document.getElementById("toUid");
-  if (sel){
-    sel.innerHTML = "";
-    Object.entries(_nameMap).forEach(([uid, name]) => {
-      if (uid !== currentUid) {
-        const opt = document.createElement("option"); opt.value = uid; opt.textContent = name; sel.appendChild(opt);
-      }
-    });
-  }
-}
-onAuthStateChanged(auth, (user) => { if (user) initParticipants(user.uid); });
 
-// ... (rest the same as v3.2/3.3) – not included here to keep patch short
+auth.onAuthStateChanged((user)=>{
+  if (!user) return;
+  const uid = user.uid;
+
+  // Ai nợ bạn: splits approved with payerId = uid
+  const box1 = document.getElementById("boxOweYou") || document.getElementById("listOweYou") || document.querySelector("#debtToYou");
+  const q1 = query(collection(db,"splits"), where("status","==","approved"), where("monthKey","==", mk), where("payerId","==", uid));
+  onSnapshot(q1, (snap)=>{
+    const m={};
+    snap.forEach(d=>{ const x=d.data(); const name=x.debtorName||x.debtorId; m[name]=(m[name]||0)+Number(x.shareAmount||0); });
+    renderList(box1, m);
+  });
+
+  // Bạn đang nợ ai: debtorId = uid
+  const box2 = document.getElementById("boxYouOwe") || document.getElementById("listYouOwe") || document.querySelector("#youOwe");
+  const q2 = query(collection(db,"splits"), where("status","==","approved"), where("monthKey","==", mk), where("debtorId","==", uid));
+  onSnapshot(q2, (snap)=>{
+    const m={};
+    snap.forEach(d=>{ const x=d.data(); const name=x.payerName||x.payerId; m[name]=(m[name]||0)+Number(x.shareAmount||0); });
+    renderList(box2, m);
+  });
+});
