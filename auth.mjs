@@ -1,4 +1,4 @@
-// auth.mjs — basic auth helpers
+// auth.mjs — v1.1 auth helpers with UI toggle
 import { auth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, db, doc, setDoc, getDoc } from "./firebase.mjs";
 
 // Admin UID (owner)
@@ -8,7 +8,6 @@ export function isAdmin(u){ return u && u.uid === ADMIN_UID; }
 export async function signInGoogle(){
   const provider = new GoogleAuthProvider();
   const res = await signInWithPopup(auth, provider);
-  // Ensure user record exists
   const u = res.user;
   const ref = doc(db, "users", u.uid);
   const snap = await getDoc(ref);
@@ -24,11 +23,23 @@ export async function signInGoogle(){
 }
 
 export function bindAuthUI(){
+  const btnLogin = document.getElementById("btnLogin");
+  const btnLogout = document.getElementById("btnLogout");
+  const btnAdmin = document.getElementById("btnAdmin");
+  const elName = document.getElementById("userName");
+
   onAuthStateChanged(auth, (u)=>{
-    const elName = document.getElementById("userName");
-    if (elName){ elName.textContent = u ? (u.displayName || u.email || "Bạn") : ""; }
-    const btnAdmin = document.getElementById("btnAdmin");
-    if (btnAdmin){ btnAdmin.style.display = u && isAdmin(u) ? "inline-block" : "none"; }
+    if (u){
+      if (elName) elName.textContent = u.displayName || u.email || "Bạn";
+      if (btnLogin) btnLogin.style.display = "none";
+      if (btnLogout) btnLogout.style.display = "inline-block";
+      if (btnAdmin) btnAdmin.style.display = isAdmin(u) ? "inline-block" : "none";
+    } else {
+      if (elName) elName.textContent = "";
+      if (btnLogin) btnLogin.style.display = "inline-block";
+      if (btnLogout) btnLogout.style.display = "none";
+      if (btnAdmin) btnAdmin.style.display = "none";
+    }
   });
 }
 
