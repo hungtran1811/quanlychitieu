@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin - Quản lý chi tiêu</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="./firebase.js"></script>
+  <script src="./auth.js" defer></script>
+  <script src="./admin.js" defer></script>
+</head>
+<body>
+  <nav>
+    <div class="row container">
+      <div><strong>🔐 Admin</strong></div>
+      <div>
+        <a class="btn" href="./index.html">Dashboard</a>
+        <button class="btn" onclick="signOutNow()">Đăng xuất</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container grid">
+    <section class="card">
+      <h2>Tạo hóa đơn nhà (chia đều)</h2>
+      <form id="formHouseBill">
+        <div class="grid grid-2">
+          <div>
+            <label>Tiêu đề</label>
+            <input id="billTitle" placeholder="Tiền nhà, tiền điện, tiền nước..." required />
+          </div>
+          <div>
+            <label>Số tiền (VND)</label>
+            <input id="billAmount" type="number" min="0" step="1000" required />
+          </div>
+        </div>
+        <div class="grid grid-2">
+          <div>
+            <label>Tháng</label>
+            <input id="billMonth" type="month" required />
+          </div>
+          <div>
+            <label>Thành viên</label>
+            <select id="participants" multiple size="5" required></select>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <button class="btn" type="submit">Tạo hóa đơn</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Danh sách hóa đơn</h2>
+      <table>
+        <thead>
+          <tr><th>Tiêu đề</th><th>Tháng</th><th>Tổng tiền</th><th>Thành viên</th><th>Trạng thái</th><th></th></tr>
+        </thead>
+        <tbody id="billsBody"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer>© 2025 QuanLyChiTieu</footer>
+</body>
+</html>
