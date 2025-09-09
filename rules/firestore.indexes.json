@@ -5,7 +5,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "userId",
+          "fieldPath": "status",
           "order": "ASCENDING"
         },
         {
@@ -15,9 +15,17 @@
       ]
     },
     {
-      "collectionGroup": "houseBills",
+      "collectionGroup": "expenses",
       "queryScope": "COLLECTION",
       "fields": [
+        {
+          "fieldPath": "ownerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
         {
           "fieldPath": "createdAt",
           "order": "DESCENDING"
@@ -25,11 +33,37 @@
       ]
     },
     {
-      "collectionGroup": "users",
+      "collectionGroup": "splits",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "displayName",
+          "fieldPath": "debtorId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "monthKey",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "splits",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "payerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "monthKey",
           "order": "ASCENDING"
         }
       ]

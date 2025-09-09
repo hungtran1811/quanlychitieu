@@ -1,70 +1,81 @@
 <!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin - Quản lý chi tiêu</title>
-  <link rel="stylesheet" href="./styles.css" />
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="./firebase.js"></script>
-  <script src="./auth.js" defer></script>
-  <script src="./admin.js" defer></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body>
-  <nav>
-    <div class="row container">
-      <div><strong>🔐 Admin</strong></div>
-      <div>
-        <a class="btn" href="./index.html">Dashboard</a>
-        <button class="btn" onclick="signOutNow()">Đăng xuất</button>
+<body class="bg-light">
+<nav class="navbar bg-white border-bottom">
+  <div class="container">
+    <a class="navbar-brand" href="./index.html">💼 Admin</a>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-secondary btn-sm" id="btnLogout">Đăng xuất</button>
+    </div>
+  </div>
+</nav>
+
+<main class="container my-4">
+  <ul class="nav nav-tabs" id="adminTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-approve" type="button">Phê duyệt</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-house" type="button">Tiền nhà</button>
+    </li>
+  </ul>
+
+  <div class="tab-content border border-top-0 rounded-bottom bg-white p-3">
+    <div class="tab-pane fade show active" id="tab-approve">
+      <h5>Hàng đợi phê duyệt</h5>
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead><tr><th>Người chi</th><th>Danh mục</th><th>Số tiền</th><th>Người đi cùng</th><th>Thời gian</th><th></th></tr></thead>
+          <tbody id="pendingBody"></tbody>
+        </table>
       </div>
     </div>
-  </nav>
 
-  <main class="container grid">
-    <section class="card">
-      <h2>Tạo hóa đơn nhà (chia đều)</h2>
-      <form id="formHouseBill">
-        <div class="grid grid-2">
-          <div>
-            <label>Tiêu đề</label>
-            <input id="billTitle" placeholder="Tiền nhà, tiền điện, tiền nước..." required />
-          </div>
-          <div>
-            <label>Số tiền (VND)</label>
-            <input id="billAmount" type="number" min="0" step="1000" required />
-          </div>
+    <div class="tab-pane fade" id="tab-house">
+      <h5>Tạo khoản tiền nhà</h5>
+      <form id="formHouse" class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label">Tháng</label>
+          <input id="houseMonth" type="month" class="form-control" required>
         </div>
-        <div class="grid grid-2">
-          <div>
-            <label>Tháng</label>
-            <input id="billMonth" type="month" required />
-          </div>
-          <div>
-            <label>Thành viên</label>
-            <select id="participants" multiple size="5" required></select>
-          </div>
+        <div class="col-md-3">
+          <label class="form-label">Số điện cũ</label>
+          <input id="elecOld" type="number" class="form-control" required>
         </div>
-        <div style="margin-top:12px">
-          <button class="btn" type="submit">Tạo hóa đơn</button>
+        <div class="col-md-3">
+          <label class="form-label">Số điện mới</label>
+          <input id="elecNew" type="number" class="form-control" required>
+        </div>
+        <div class="col-12">
+          <div class="form-label">Thành viên ở tháng này</div>
+          <div id="houseParticipants" class="d-flex flex-wrap gap-2"></div>
+        </div>
+
+        <div class="col-12">
+          <button class="btn btn-link p-0" type="button" data-bs-toggle="collapse" data-bs-target="#extraCollapse">+ Khoản bổ sung</button>
+          <div class="collapse" id="extraCollapse">
+            <div id="extras" class="mt-2"></div>
+            <button id="btnAddExtra" class="btn btn-sm btn-outline-secondary mt-2" type="button">Thêm dòng</button>
+          </div>
+          <div class="form-text">Rác + Wifi = 150,000 tự động cộng. Nước = 100,000 * số người.</div>
+        </div>
+
+        <div class="col-12">
+          <button class="btn btn-success" type="submit">Tạo khoản chi tiền nhà (pending)</button>
         </div>
       </form>
-    </section>
+      <div class="alert alert-info mt-3" id="housePreview" style="display:none"></div>
+    </div>
+  </div>
+</main>
 
-    <section class="card">
-      <h2>Danh sách hóa đơn</h2>
-      <table>
-        <thead>
-          <tr><th>Tiêu đề</th><th>Tháng</th><th>Tổng tiền</th><th>Thành viên</th><th>Trạng thái</th><th></th></tr>
-        </thead>
-        <tbody id="billsBody"></tbody>
-      </table>
-    </section>
-  </main>
-
-  <footer>© 2025 QuanLyChiTieu</footer>
+<script type="module" src="./page_admin.mjs"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
