@@ -1,4 +1,4 @@
-// page_index.mjs – patch v3.1: fix settleAll query typo
+// page_index.mjs – v3.2 UI polish & single-approval constraint
 import { auth, db, collection, addDoc, serverTimestamp, onAuthStateChanged, query, where, orderBy, limit, onSnapshot, doc, deleteDoc, getDocs, updateDoc } from "./firebase.mjs";
 import { bindAuthUI, signInGoogle, signOutNow } from "./auth.mjs";
 import { fmt, monthKeyFromDate, renderUserChips, uidSelected, userMap } from "./utils.mjs";
@@ -95,25 +95,25 @@ document.addEventListener("click", async (e)=>{
   }
 });
 
+// Debts + Settle
 let unsubPayer=null, unsubDebtor=null, unsubSettleIn=null, unsubSettleOut=null, unsubIncoming=null;
+let _theyOweRaw={}, _iOweRaw={}, _approvedPairs=new Set();
+function pairKey(a,b){ return [a,b].sort().join("_"); }
+
 function listenDebt() {
   const user = auth.currentUser; if (!user) return;
   unsubPayer = onSnapshot(
     query(collection(db,"splits"), where("payerId","==",user.uid), where("status","==","approved"), where("monthKey","==",mk)),
-    (snap) => updateTheyOwe(snap)
+    (snap) => { _theyOweRaw={}; snap.forEach(s=>{const d=s.data(); _theyOweRaw[d.debtorId]=( _theyOweRaw[d.debtorId]||0)+(d.shareAmount||0);}); renderDebts(); }
   );
   unsubDebtor = onSnapshot(
     query(collection(db,"splits"), where("debtorId","==",user.uid), where("status","==","approved"), where("monthKey","==",mk)),
-    (snap) => updateIOwe(snap)
+    (snap) => { _iOweRaw={}; snap.forEach(s=>{const d=s.data(); _iOweRaw[d.payerId]=( _iOweRaw[d.payerId]||0)+(d.shareAmount||0);}); renderDebts(); }
   );
-  unsubSettleIn = onSnapshot(
-    query(collection(db,"payRequests"), where("toUid","==",user.uid), where("status","==","approved"), where("monthKey","==",mk), where("settleAll","==",true)),
-    (snap) => { _approvedToMe = parseSettlePairs(snap); renderDebts(); }
-  );
-  unsubSettleOut = onSnapshot(
-    query(collection(db,"payRequests"), where("fromUid","==",user.uid), where("status","==","approved"), where("monthKey","==",mk), where("settleAll","==",true)),
-    (snap) => { _approvedFromMe = parseSettlePairs(snap); renderDebts(); }
-  );
+  // approved settle-all (both directions)
+  const handleSettle = (snap)=>{ _approvedPairs = new Set(); snap.forEach(x=>{const d=x.data(); _approvedPairs.add(pairKey(d.fromUid,d.toUid));}); renderDebts(); };
+  unsubSettleIn = onSnapshot(query(collection(db,"payRequests"), where("status","==","approved"), where("monthKey","==",mk), where("settleAll","==",true)), handleSettle);
+  // pending incoming list
   unsubIncoming = onSnapshot(
     query(collection(db,"payRequests"), where("toUid","==",user.uid), where("status","==","pending"), where("monthKey","==",mk), where("settleAll","==",true), orderBy("createdAt","desc")),
     (snap) => {
@@ -121,10 +121,10 @@ function listenDebt() {
       snap.forEach(docu => {
         const d=docu.data();
         const tr=document.createElement("tr");
-        tr.innerHTML = `<td>${_nameMap[d.fromUid]||d.fromUid}</td>
-          <td>${d.note||""}</td>
-          <td>${d.createdAt?.toDate?.().toLocaleString("vi-VN")||"-"}</td>
-          <td>
+        tr.innerHTML = `<td style="width:25%">${_nameMap[d.fromUid]||d.fromUid}</td>
+          <td style="width:45%">${d.note||""}</td>
+          <td style="width:20%">${d.createdAt?.toDate?.().toLocaleString("vi-VN")||"-"}</td>
+          <td style="width:10%">
             <button class="btn btn-sm btn-success me-1" data-approve-req="${docu.id}">Chấp nhận</button>
             <button class="btn btn-sm btn-outline-danger" data-reject-req="${docu.id}">Từ chối</button>
           </td>`;
@@ -135,53 +135,38 @@ function listenDebt() {
 }
 onAuthStateChanged(auth, () => listenDebt());
 
-let _theyOweRaw={}, _iOweRaw={}, _approvedToMe=new Set(), _approvedFromMe=new Set();
-function parseSettlePairs(snap) {
-  const s = new Set();
-  snap.forEach(d => { const x=d.data(); const pair = [x.fromUid,x.toUid].sort().join("_"); s.add(pair); });
-  return s;
-}
-function updateTheyOwe(snap) {
-  _theyOweRaw = {};
-  snap.forEach(s => { const d=s.data(); _theyOweRaw[d.debtorId]=( _theyOweRaw[d.debtorId]||0 ) + (d.shareAmount||0); });
-  renderDebts();
-}
-function updateIOwe(snap) {
-  _iOweRaw = {};
-  snap.forEach(s => { const d=s.data(); _iOweRaw[d.payerId]=( _iOweRaw[d.payerId]||0 ) + (d.shareAmount||0); });
-  renderDebts();
-}
-function pairSettled(uidA, uidB) {
-  const key = [uidA, uidB].sort().join("_");
-  return _approvedToMe.has(key) || _approvedFromMe.has(key);
-}
 function renderDebts() {
   const me = auth.currentUser?.uid; if (!me) return;
   const theyC = document.getElementById("theyOweList");
   const iC = document.getElementById("iOweList");
   theyC.innerHTML=""; iC.innerHTML="";
+  // They owe me
   Object.keys(_theyOweRaw).forEach(uid => {
-    const settled = pairSettled(me, uid);
-    const val = settled ? 0 : _theyOweRaw[uid];
+    if (_approvedPairs.has(pairKey(me,uid))) return; // ẩn cặp đã settle
+    const val = Math.max(0, _theyOweRaw[uid]);
+    if (val<=0) return;
     const row = document.createElement("div");
-    row.className = "d-flex justify-content-between align-items-center border rounded-3 p-2 mb-2";
-    row.innerHTML = `<div>${_nameMap[uid]||uid}</div><div class="fw-semibold">${fmt.format(val)}</div>`;
+    row.className = "row-item";
+    row.innerHTML = `<span>${_nameMap[uid]||uid}</span><span class="fw-semibold">${fmt.format(val)}</span>`;
     theyC.appendChild(row);
   });
+  // I owe them
   Object.keys(_iOweRaw).forEach(uid => {
-    const settled = pairSettled(me, uid);
-    const val = settled ? 0 : _iOweRaw[uid];
+    if (_approvedPairs.has(pairKey(me,uid))) return; // ẩn cặp đã settle
+    const val = Math.max(0, _iOweRaw[uid]);
+    if (val<=0) return;
     const row = document.createElement("div");
-    row.className = "d-flex justify-content-between align-items-center border rounded-3 p-2 mb-2";
-    row.innerHTML = `<div>${_nameMap[uid]||uid}</div>
-      <div>
+    row.className = "row-item";
+    row.innerHTML = `<span>${_nameMap[uid]||uid}</span>
+      <span>
         <span class="fw-semibold me-2">${fmt.format(val)}</span>
         <button class="btn btn-sm btn-outline-primary" data-openreq="${uid}">Thanh toán nợ</button>
-      </div>`;
+      </span>`;
     iC.appendChild(row);
   });
 }
 
+// open modal
 let reqModal;
 document.getElementById("btnOpenSettle")?.addEventListener("click", () => {
   reqModal = bootstrap.Modal.getOrCreateInstance(document.getElementById("reqModal"));
@@ -197,11 +182,35 @@ document.addEventListener("click", (e) => {
   }
 });
 
+// prevent duplicate settle requests in same month & pair
+async function hasExistingSettle(fromUid,toUid){
+  const qy = query(collection(db,"payRequests"),
+    where("monthKey","==",mk),
+    where("settleAll","==",true),
+    where("fromUid","==",fromUid),
+    where("toUid","==",toUid),
+  );
+  const qy2 = query(collection(db,"payRequests"),
+    where("monthKey","==",mk),
+    where("settleAll","==",true),
+    where("fromUid","==",toUid),
+    where("toUid","==",fromUid),
+  );
+  const [s1,s2] = await Promise.all([getDocs(qy), getDocs(qy2)]);
+  return s1.size>0 || s2.size>0;
+}
+
 document.getElementById("btnSendReq")?.addEventListener("click", async () => {
   const user = auth.currentUser; if (!user) return alert("Hãy đăng nhập");
   const toUid = document.getElementById("toUid").value;
   const note = document.getElementById("reqNote").value.trim();
   if (!toUid) return alert("Chọn người đối ứng");
+
+  // check duplicate (pending/approved any direction in this month)
+  if (await hasExistingSettle(user.uid,toUid)) {
+    return alert("Đã tồn tại yêu cầu thanh toán nợ giữa 2 bên trong tháng này.");
+  }
+
   await addDoc(collection(db,"payRequests"), {
     fromUid: user.uid, toUid, note,
     status:"pending", monthKey: mk, settleAll: true,

@@ -1,2 +1,7 @@
-/* patch */
-.table td, .table th { vertical-align: middle; }
+/* v3.2 UI polish: avoid CLS, fix tables */
+:root { scrollbar-gutter: stable both-edges; }
+.table-fixed { table-layout: fixed; }
+.min-h { min-height: 114px; }
+.row-item{display:flex;justify-content:space-between;align-items:center;border:1px solid #e9ecef;border-radius:.5rem;padding:.5rem .75rem;margin-bottom:.5rem;background:#fff;}
+.list-compact > .row-item:last-child{margin-bottom:0;}
+.modal-open .navbar{padding-right:0 !important;}
