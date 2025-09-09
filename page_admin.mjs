@@ -1,7 +1,10 @@
-// page_admin.mjs – v3.2 with House tab restored
+// page_admin.mjs — PATCH v3.2.1
+// Fix: Khi DUYỆT khoản "Tiền nhà", đảm bảo splits được tạo/chuẩn hóa cho TẤT CẢ thành viên (trừ payer),
+// sau đó chuyển toàn bộ splits về approved với share = total / số người.
+
 import { auth } from "./firebase.mjs";
 import { bindAuthUI, signOutNow, isAdmin } from "./auth.mjs";
-import { db, collection, query, where, orderBy, onSnapshot, updateDoc, doc, getDocs, addDoc, serverTimestamp } from "./firebase.mjs";
+import { db, collection, query, where, orderBy, onSnapshot, updateDoc, doc, getDocs, addDoc, serverTimestamp, getDoc } from "./firebase.mjs";
 import { fmt, renderUserChips } from "./utils.mjs";
 
 bindAuthUI();
@@ -17,7 +20,7 @@ auth.onAuthStateChanged((u) => {
   }
 });
 
-// ---- expenses approvals
+// ---- expenses approvals (with split normalization)
 const pendingBody = document.getElementById("pendingBody");
 function loadPendingExpenses() {
   const qy = query(collection(db, "expenses"), where("status","==","pending"), orderBy("createdAt","desc"));
@@ -40,14 +43,61 @@ function loadPendingExpenses() {
     });
   });
 }
+
+async function normalizeAndApproveSplits(expenseId){
+  // 1) Load expense
+  const expSnap = await getDoc(doc(db, "expenses", expenseId));
+  if (!expSnap.exists()) return;
+  const exp = expSnap.data();
+  const payerId = exp.ownerId;
+  const monthKey = exp.monthKey;
+  const parts = Array.isArray(exp.participants)? exp.participants.filter(uid => uid && uid !== payerId) : [];
+  const people = parts.length || 1;
+  const share = Math.round((Number(exp.amount||0) / people) * 100) / 100;
+
+  // 2) Load existing splits for this expense
+  const spSnap = await getDocs(query(collection(db,"splits"), where("expenseId","==", expenseId)));
+  const byDebtor = {};
+  spSnap.forEach(d => { const x=d.data(); byDebtor[x.debtorId] = { id:d.id, ...x }; });
+
+  // 3) Create missing splits (as pending due to rules), or update amounts if lệch
+  const createTasks = [];
+  for (const debtorId of parts){
+    if (!byDebtor[debtorId]){
+      createTasks.push(addDoc(collection(db,"splits"), {
+        expenseId: expenseId,
+        payerId, debtorId,
+        shareAmount: share,
+        status: "pending",            // create as pending, then approve
+        monthKey,
+        createdAt: serverTimestamp()
+      }));
+    } else if (byDebtor[debtorId].shareAmount !== share){
+      // chuẩn hóa số tiền nếu khác
+      createTasks.push(updateDoc(doc(db,"splits", byDebtor[debtorId].id), { shareAmount: share }));
+    }
+  }
+  await Promise.all(createTasks);
+
+  // 4) Approve all splits for this expense (kể cả vừa tạo)
+  const afterSnap = await getDocs(query(collection(db,"splits"), where("expenseId","==", expenseId)));
+  const approveTasks = afterSnap.docs.map(d => updateDoc(doc(db,"splits", d.id), {
+    status: "approved",
+    updatedAt: serverTimestamp()
+  }));
+  await Promise.all(approveTasks);
+}
+
 document.addEventListener("click", async (e) => {
   const a = e.target.closest("[data-approve-exp]"); const r = e.target.closest("[data-reject-exp]");
   if (a) {
     const id = a.getAttribute("data-approve-exp");
-    await updateDoc(doc(db, "expenses", id), { status: "approved", updatedAt: serverTimestamp() });
-    const spSnap = await getDocs(query(collection(db,"splits"), where("expenseId","==", id)));
-    const tasks = spSnap.docs.map(d => updateDoc(doc(db, "splits", d.id), { status: "approved", updatedAt: serverTimestamp() }));
-    await Promise.all(tasks);
+    try{
+      await normalizeAndApproveSplits(id);
+      await updateDoc(doc(db, "expenses", id), { status: "approved", updatedAt: serverTimestamp() });
+    }catch(err){
+      alert("Duyệt lỗi: " + (err?.message||err));
+    }
   }
   if (r) {
     const id = r.getAttribute("data-reject-exp");
@@ -58,7 +108,7 @@ document.addEventListener("click", async (e) => {
   }
 });
 
-// ---- House tab
+// ---- House tab (unchanged vs v3.2)
 async function initHouseForm() {
   const users = await getDocs(collection(db, "users")).then(s=>s.docs.map(d=>d.data()));
   renderUserChips(document.getElementById("houseParticipants"), users);
@@ -121,7 +171,7 @@ async function submitHouse(ev) {
   alert("Đã tạo khoản tiền nhà (pending). Vào tab Phê duyệt để duyệt.");
 }
 
-// ---- Settle requests
+// ---- Settle requests (unchanged vs v3.2)
 const reqBody = document.getElementById("reqBody");
 function loadSettleRequests() {
   const qy = query(collection(db,"payRequests"), where("status","==","pending"), where("settleAll","==",true), orderBy("createdAt","desc"));
