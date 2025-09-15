@@ -3,25 +3,47 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Đăng nhập - Quản lý chi tiêu</title>
+    <title>Admin Panel</title>
     <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
-    <div id="login-container">
-      <h1>Đăng nhập bằng Google</h1>
-      <button id="btn-google">Đăng nhập với Google</button>
+    <div id="nav">
+      <span>Admin Panel</span>
+      <button id="btn-logout">Đăng xuất</button>
+    </div>
+
+    <div id="content">
+      <h2>Thống kê tổng nợ</h2>
+      <canvas id="chart-overview" width="400" height="200"></canvas>
+
+      <h3>So sánh tổng tiền nhà</h3>
+      <div id="house-bill-info">
+        <p>Tổng tính toán: <span id="calc-total">0</span> VNĐ</p>
+        <p>Tổng chủ nhà báo: <span id="owner-total">0</span> VNĐ</p>
+        <p id="diff"></p>
+      </div>
+
+      <h3>Danh sách expenses đang pending</h3>
+      <div id="pending-list"></div>
     </div>
 
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
       import {
         getAuth,
-        signInWithPopup,
-        GoogleAuthProvider,
-        signInWithRedirect,
-        getRedirectResult,
+        onAuthStateChanged,
+        signOut,
       } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-      import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+      import {
+        getFirestore,
+        collection,
+        query,
+        where,
+        onSnapshot,
+        orderBy,
+        getDocs,
+      } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyA-NnpxWJL8hW1-vyCpNi7fUtQsL4NbzSA",
@@ -32,44 +54,111 @@
         appId: "1:447902402830:web:246f2c65982224240b2f5f",
       };
 
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
-      const provider = new GoogleAuthProvider();
-
       const ADMIN_UID = "rVrRomrCGbPqPcrPddtBTpdcLoh2";
 
-      // kiểm tra redirect result
-      getRedirectResult(auth)
-        .then((result) => {
-          if (result && result.user) {
-            handleUserLogin(result.user);
-          }
-        })
-        .catch((error) => {
-          console.error("Error in redirect login:", error);
-        });
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
 
-      document.getElementById("btn-google").addEventListener("click", () => {
-        if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-          signInWithRedirect(auth, provider);
-        } else {
-          signInWithPopup(auth, provider)
-            .then((result) => {
-              handleUserLogin(result.user);
-            })
-            .catch((error) => {
-              console.error("Error in popup login:", error);
-            });
+      onAuthStateChanged(auth, (user) => {
+        if (!user) {
+          window.location.href = "index.html";
+          return;
         }
+        if (user.uid !== ADMIN_UID) {
+          window.location.href = "dashboard.html";
+          return;
+        }
+
+        loadAdminDashboard();
       });
 
-      function handleUserLogin(user) {
-        // user: firebase.User
-        // sau khi login thành công, redirect tới dashboard tương ứng
-        if (user.uid === ADMIN_UID) {
-          window.location.href = "admin.html";
-        } else {
-          window.location.href = "dashboard.html";
+      document.getElementById("btn-logout").addEventListener("click", () => {
+        signOut(auth).then(() => {
+          window.location.href = "index.html";
+        });
+      });
+
+      async function loadAdminDashboard() {
+        // 1. Lấy tất cả users để phục vụ thống kê nợ ai nhiều nhất
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        const users = usersSnapshot.docs.map((doc) => ({
+          uid: doc.id,
+          ...doc.data(),
+        }));
+
+        // Khởi tạo map để tính tổng nợ hoặc người khác nợ mỗi user
+        const userOweMap = {};
+        users.forEach((u) => (userOweMap[u.uid] = 0));
+
+        // 2. Lấy tất cả expenses approved để tính nợ
+        const expSnap = await getDocs(
+          query(collection(db, "expenses"), where("status", "==", "approved"))
+        );
+        expSnap.forEach((doc) => {
+          const data = doc.data();
+          const payer = data.payerUid;
+          const shareDetail = data.shareDetail || {};
+
+          Object.keys(shareDetail).forEach((uid) => {
+            if (uid !== payer) {
+              // uid nợ payer
+              userOweMap[uid] = (userOweMap[uid] || 0) + shareDetail[uid];
+            }
+          });
+        });
+
+        // 3. Vẽ biểu đồ: người nợ nhiều nhất
+        const ctx = document.getElementById("chart-overview").getContext("2d");
+        new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: Object.keys(userOweMap),
+            datasets: [
+              {
+                label: "Số tiền nợ (VNĐ)",
+                data: Object.values(userOweMap),
+                backgroundColor: "rgba(54, 162, 235, 0.5)",
+              },
+            ],
+          },
+        });
+
+        // 4. Tiền nhà: tính tổng chi tiết
+        const billsSnap = await getDocs(collection(db, "bills"));
+        let calcTotal = 0;
+        billsSnap.forEach((doc) => {
+          const data = doc.data();
+          // Giả sử bills document chứa các field: houseFixed, electricity, netTrash, water, ownerSent
+          calcTotal +=
+            (data.houseFixed || 0) +
+            (data.electricity || 0) +
+            (data.netTrash || 0) +
+            (data.water || 0);
+        });
+        document.getElementById("calc-total").textContent = calcTotal;
+
+        // Giả sử chỉ lấy version của bills có field ownerSent
+        // Bạn nhập ownerSent khi admin nhập số chủ nhà báo
+        let ownerTotal = 0;
+        billsSnap.forEach((doc) => {
+          const data = doc.data();
+          if (data.ownerSent != null) {
+            ownerTotal += data.ownerSent;
+          }
+        });
+        document.getElementById("owner-total").textContent = ownerTotal;
+
+        const diffEl = document.getElementById("diff");
+        const diff = ownerTotal - calcTotal;
+        diffEl.textContent =
+          diff > 0
+            ? `Thừa ${diff} VNĐ`
+            : diff < 0
+            ? `Thiếu ${-diff} VNĐ`
+            : "Đủ khớp";
+        if (diff !== 0) {
+          diffEl.style.color = "red";
         }
       }
     </script>
