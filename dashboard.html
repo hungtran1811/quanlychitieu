@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dashboard - Người dùng</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="nav">
+      <span id="greeting"></span>
+      <button id="btn-logout">Đăng xuất</button>
+    </div>
+
+    <div id="content">
+      <h2>Bạn đang nợ: <span id="you-owe">0</span> VNĐ</h2>
+      <h2>Người khác nợ bạn: <span id="others-owe">0</span> VNĐ</h2>
+
+      <h3>Các khoản chi của bạn</h3>
+      <div id="your-expenses-list"></div>
+
+      <h3>Các khoản người khác nợ bạn (chia nợ từ khoản bạn thanh toán)</h3>
+      <div id="shared-from-you-list"></div>
+
+      <h3>Các khoản bạn nợ từ người khác</h3>
+      <div id="shared-to-you-list"></div>
+    </div>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+      import {
+        getAuth,
+        onAuthStateChanged,
+        signOut,
+      } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+      import {
+        getFirestore,
+        collection,
+        query,
+        where,
+        getDocs,
+        onSnapshot,
+        orderBy,
+      } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyA-NnpxWJL8hW1-vyCpNi7fUtQsL4NbzSA",
+        authDomain: "quanlychitieu-3ce52.firebaseapp.com",
+        projectId: "quanlychitieu-3ce52",
+        storageBucket: "quanlychitieu-3ce52.firebasestorage.app",
+        messagingSenderId: "447902402830",
+        appId: "1:447902402830:web:246f2c65982224240b2f5f",
+      };
+
+      const ADMIN_UID = "rVrRomrCGbPqPcrPddtBTpdcLoh2";
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      onAuthStateChanged(auth, (user) => {
+        if (!user) {
+          // chưa login
+          window.location.href = "index.html";
+          return;
+        }
+        if (user.uid === ADMIN_UID) {
+          window.location.href = "admin.html";
+          return;
+        }
+
+        document.getElementById("greeting").textContent =
+          "Xin chào, " + (user.displayName || user.email);
+
+        // load dữ liệu
+        loadUserDashboard(user.uid);
+      });
+
+      document.getElementById("btn-logout").addEventListener("click", () => {
+        signOut(auth).then(() => {
+          window.location.href = "index.html";
+        });
+      });
+
+      async function loadUserDashboard(uid) {
+        const youOweEl = document.getElementById("you-owe");
+        const othersOweEl = document.getElementById("others-owe");
+        const yourExpensesList = document.getElementById("your-expenses-list");
+        const sharedFromYouList = document.getElementById(
+          "shared-from-you-list"
+        );
+        const sharedToYouList = document.getElementById("shared-to-you-list");
+
+        let youOwe = 0;
+        let othersOwe = 0;
+
+        // 1. Khoản chi bạn đã trả (payerUid == uid), sau khi được duyệt
+        const qPaidByYou = query(
+          collection(db, "expenses"),
+          where("payerUid", "==", uid),
+          where("status", "==", "approved"),
+          orderBy("createdAt", "desc")
+        );
+        const paidByYouSnap = await getDocs(qPaidByYou);
+        paidByYouSnap.forEach((doc) => {
+          const data = doc.data();
+          // tính phần người khác nợ bạn: moneyShared total - bạn trả phần của bạn
+          // Giả sử data: { amount: tổng, shareDetail: {uid1: số, uid2: số,...}, payerUid }
+          const shareDetail = data.shareDetail || {};
+          Object.keys(shareDetail).forEach((otherUid) => {
+            if (otherUid !== uid) {
+              othersOwe += shareDetail[otherUid];
+            }
+          });
+          // hiển thị list
+          const div = document.createElement("div");
+          div.textContent = `Bạn đã chi ${data.amount} — chia cho ${
+            Object.keys(shareDetail).length
+          } người`;
+          sharedFromYouList.appendChild(div);
+        });
+
+        // 2. Khoản chi bạn nợ người khác: bạn nằm trong splitTo / shareDetail và payerUid ≠ you
+        const qYouOwe = query(
+          collection(db, "expenses"),
+          where("status", "==", "approved"),
+          orderBy("createdAt", "desc")
+        );
+        const youOweSnap = await getDocs(qYouOwe);
+        youOweSnap.forEach((doc) => {
+          const data = doc.data();
+          const shareDetail = data.shareDetail || {};
+          if (data.payerUid !== uid && shareDetail[uid]) {
+            youOwe += shareDetail[uid];
+            const div = document.createElement("div");
+            div.textContent = `Bạn nợ ${data.payerUid} số ${shareDetail[uid]} từ khoản ${data.amount}`;
+            sharedToYouList.appendChild(div);
+          }
+        });
+
+        // 3. Cập số hiển thị
+        youOweEl.textContent = youOwe;
+        othersOweEl.textContent = othersOwe;
+      }
+    </script>
+  </body>
+</html>

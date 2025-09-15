@@ -1,15 +1,51 @@
-/* styles.css — clean light UI */
-:root { scrollbar-gutter: stable both-edges; }
-body { background: #f5f7fb; }
-.navbar { background: #fff; }
-.card { border-radius: 12px; }
-.table-fixed { table-layout: fixed; }
-.user-chip .badge { padding: .5rem .75rem; font-weight: 500; border: 1px solid #e5e7eb; }
-.user-chip input { display:none; }
-.user-chip input:checked + .badge { background:#0d6efd; color:#fff; border-color:#0d6efd; }
-.modal { --bs-modal-margin: 1.5rem; }
-body.modal-open { padding-right:0 !important; overflow-y:hidden; }
-.modal-dialog-centered { align-items: center; }
-.modal-dialog-scrollable .modal-content { max-height: calc(100vh - 3rem); }
-.badge-approve { background:#d1e7dd; color:#0f5132; }
-.badge-reject { background:#f8d7da; color:#842029; }
+/* styles.css */
+:root {
+    --bg-color: #ffffff;
+    --text-color: #000000;
+    --primary-color: #007bff;
+}
+
+body.dark {
+    --bg-color: #121212;
+    --text-color: #eeeeee;
+    --primary-color: #4dabf5;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: Arial, sans-serif;
+}
+
+#nav {
+    display: flex;
+    justify-content: space-between;
+    padding: 1rem;
+    background-color: var(--primary-color);
+    color: #fff;
+}
+
+#content {
+    padding: 1rem;
+}
+
+#login-container {
+    margin-top: 5rem;
+    text-align: center;
+}
+
+button {
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+    margin: 0.5rem;
+}
+
+@media (max-width: 600px) {
+
+    #nav,
+    #content {
+        padding: 0.5rem;
+    }
+}
