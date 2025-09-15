@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Đăng nhập - Quản lý chi tiêu</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="login-container">
+      <h1>Đăng nhập bằng Google</h1>
+      <button id="btn-google">Đăng nhập với Google</button>
+    </div>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+      import {
+        getAuth,
+        signInWithPopup,
+        GoogleAuthProvider,
+        signInWithRedirect,
+        getRedirectResult,
+      } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+      import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyA-NnpxWJL8hW1-vyCpNi7fUtQsL4NbzSA",
+        authDomain: "quanlychitieu-3ce52.firebaseapp.com",
+        projectId: "quanlychitieu-3ce52",
+        storageBucket: "quanlychitieu-3ce52.firebasestorage.app",
+        messagingSenderId: "447902402830",
+        appId: "1:447902402830:web:246f2c65982224240b2f5f",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const provider = new GoogleAuthProvider();
+
+      const ADMIN_UID = "rVrRomrCGbPqPcrPddtBTpdcLoh2";
+
+      // kiểm tra redirect result
+      getRedirectResult(auth)
+        .then((result) => {
+          if (result && result.user) {
+            handleUserLogin(result.user);
+          }
+        })
+        .catch((error) => {
+          console.error("Error in redirect login:", error);
+        });
+
+      document.getElementById("btn-google").addEventListener("click", () => {
+        if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+          signInWithRedirect(auth, provider);
+        } else {
+          signInWithPopup(auth, provider)
+            .then((result) => {
+              handleUserLogin(result.user);
+            })
+            .catch((error) => {
+              console.error("Error in popup login:", error);
+            });
+        }
+      });
+
+      function handleUserLogin(user) {
+        // user: firebase.User
+        // sau khi login thành công, redirect tới dashboard tương ứng
+        if (user.uid === ADMIN_UID) {
+          window.location.href = "admin.html";
+        } else {
+          window.location.href = "dashboard.html";
+        }
+      }
+    </script>
+  </body>
+</html>
