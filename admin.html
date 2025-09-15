@@ -4,30 +4,116 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Admin Panel</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="styles.css" />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
-  <body>
-    <div id="nav">
-      <span>Admin Panel</span>
-      <button id="btn-logout">Đăng xuất</button>
-    </div>
+  <body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="#">Admin Quản lý</a>
+        <div class="d-flex">
+          <button class="btn btn-outline-light me-2" id="btn-go-user">
+            Xem Dashboard User
+          </button>
+          <button class="btn btn-outline-light" id="btn-logout">
+            Đăng xuất
+          </button>
+        </div>
+      </div>
+    </nav>
 
-    <div id="content">
-      <h2>Thống kê tổng nợ</h2>
-      <canvas id="chart-overview" width="400" height="200"></canvas>
-
-      <h3>So sánh tổng tiền nhà</h3>
-      <div id="house-bill-info">
-        <p>Tổng tính toán: <span id="calc-total">0</span> VNĐ</p>
-        <p>Tổng chủ nhà báo: <span id="owner-total">0</span> VNĐ</p>
-        <p id="diff"></p>
+    <div class="container py-4">
+      <!-- Form nhập tiền nhà (bills) -->
+      <div class="card mb-4 shadow">
+        <div class="card-body">
+          <h5 class="card-title">Nhập thông tin tiền nhà</h5>
+          <form id="form-bill">
+            <div class="row">
+              <div class="col-md-3 mb-3">
+                <label class="form-label">Tiền nhà cứng</label>
+                <input
+                  type="number"
+                  class="form-control"
+                  id="input-house-fixed"
+                  required
+                />
+              </div>
+              <div class="col-md-3 mb-3">
+                <label class="form-label">Số điện mới</label>
+                <input
+                  type="number"
+                  class="form-control"
+                  id="input-electric-new"
+                  required
+                />
+              </div>
+              <div class="col-md-3 mb-3">
+                <label class="form-label">Số điện cũ</label>
+                <input
+                  type="number"
+                  class="form-control"
+                  id="input-electric-old"
+                  required
+                />
+              </div>
+              <div class="col-md-3 mb-3">
+                <label class="form-label">Net & Rác</label>
+                <input
+                  type="number"
+                  class="form-control"
+                  id="input-net-trash"
+                  required
+                />
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-3 mb-3">
+                <label class="form-label">Số người ở</label>
+                <input
+                  type="number"
+                  class="form-control"
+                  id="input-people"
+                  required
+                />
+              </div>
+              <div class="col-md-3 mb-3">
+                <label class="form-label">Tiền chủ nhà báo</label>
+                <input
+                  type="number"
+                  class="form-control"
+                  id="input-owner-sent"
+                  required
+                />
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary">
+              Lưu thông tin tiền nhà
+            </button>
+          </form>
+        </div>
       </div>
 
-      <h3>Danh sách expenses đang pending</h3>
-      <div id="pending-list"></div>
+      <!-- Biểu đồ & thống kê -->
+      <div class="card mb-4 shadow">
+        <div class="card-body">
+          <h5 class="card-title">Biểu đồ nợ giữa các thành viên</h5>
+          <canvas id="chart-overview" width="400" height="200"></canvas>
+        </div>
+      </div>
+
+      <!-- Danh sách expenses pending để duyệt -->
+      <div class="card mb-4 shadow">
+        <div class="card-body">
+          <h5 class="card-title">Các khoản chi chưa duyệt</h5>
+          <div id="pending-list" class="list-group"></div>
+        </div>
+      </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
       import {
@@ -38,11 +124,13 @@
       import {
         getFirestore,
         collection,
+        addDoc,
+        getDocs,
         query,
         where,
-        onSnapshot,
-        orderBy,
-        getDocs,
+        serverTimestamp,
+        updateDoc,
+        doc,
       } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
       const firebaseConfig = {
@@ -55,7 +143,6 @@
       };
 
       const ADMIN_UID = "rVrRomrCGbPqPcrPddtBTpdcLoh2";
-
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const db = getFirestore(app);
@@ -69,98 +156,133 @@
           window.location.href = "dashboard.html";
           return;
         }
-
-        loadAdminDashboard();
+        // Nếu admin, hiển thị UI admin
       });
 
       document.getElementById("btn-logout").addEventListener("click", () => {
-        signOut(auth).then(() => {
-          window.location.href = "index.html";
-        });
+        signOut(auth).then(() => (window.location.href = "index.html"));
+      });
+      document.getElementById("btn-go-user").addEventListener("click", () => {
+        window.location.href = "dashboard.html";
       });
 
-      async function loadAdminDashboard() {
-        // 1. Lấy tất cả users để phục vụ thống kê nợ ai nhiều nhất
-        const usersSnapshot = await getDocs(collection(db, "users"));
-        const users = usersSnapshot.docs.map((doc) => ({
-          uid: doc.id,
-          ...doc.data(),
-        }));
+      // Form bills submit
+      document
+        .getElementById("form-bill")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const houseFixed = Number(
+            document.getElementById("input-house-fixed").value
+          );
+          const electricNew = Number(
+            document.getElementById("input-electric-new").value
+          );
+          const electricOld = Number(
+            document.getElementById("input-electric-old").value
+          );
+          const netTrash = Number(
+            document.getElementById("input-net-trash").value
+          );
+          const people = Number(document.getElementById("input-people").value);
+          const ownerSent = Number(
+            document.getElementById("input-owner-sent").value
+          );
 
-        // Khởi tạo map để tính tổng nợ hoặc người khác nợ mỗi user
-        const userOweMap = {};
-        users.forEach((u) => (userOweMap[u.uid] = 0));
+          const electricity = (electricNew - electricOld) * 3800;
+          const water = people * 100000;
 
-        // 2. Lấy tất cả expenses approved để tính nợ
-        const expSnap = await getDocs(
-          query(collection(db, "expenses"), where("status", "==", "approved"))
-        );
-        expSnap.forEach((doc) => {
-          const data = doc.data();
-          const payer = data.payerUid;
-          const shareDetail = data.shareDetail || {};
-
-          Object.keys(shareDetail).forEach((uid) => {
-            if (uid !== payer) {
-              // uid nợ payer
-              userOweMap[uid] = (userOweMap[uid] || 0) + shareDetail[uid];
-            }
+          await addDoc(collection(db, "bills"), {
+            houseFixed,
+            electricity,
+            netTrash,
+            water,
+            people,
+            ownerSent,
+            createdAt: serverTimestamp(),
           });
+
+          alert("Đã lưu tiền nhà!");
+          e.target.reset();
         });
 
-        // 3. Vẽ biểu đồ: người nợ nhiều nhất
-        const ctx = document.getElementById("chart-overview").getContext("2d");
-        new Chart(ctx, {
-          type: "bar",
-          data: {
-            labels: Object.keys(userOweMap),
-            datasets: [
-              {
-                label: "Số tiền nợ (VNĐ)",
-                data: Object.values(userOweMap),
-                backgroundColor: "rgba(54, 162, 235, 0.5)",
-              },
-            ],
-          },
+      // Duyệt expense pending: hiển thị pending-list và nút approve/reject
+      async function loadPending() {
+        const q = query(
+          collection(db, "expenses"),
+          where("status", "==", "pending")
+        );
+        const snap = await getDocs(q);
+        const listEl = document.getElementById("pending-list");
+        listEl.innerHTML = "";
+        snap.forEach((docSnap) => {
+          const data = docSnap.data();
+          const uid = docSnap.id;
+          const item = document.createElement("div");
+          item.className = "list-group-item";
+          // lấy tên payer từ users collection
+          // giả sử có userDoc
+          const payer = data.payerUid;
+          // fetch tên
+          fetchUserName(payer).then((name) => {
+            item.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <strong>${name}</strong> g proposed chi tiêu ${
+              data.amount
+            } VNĐ <br>
+                "${data.description || ""}"
+              </div>
+              <div>
+                <button class="btn btn-sm btn-success me-1" onclick="approve('${
+                  docSnap.id
+                }')">Duyệt</button>
+                <button class="btn btn-sm btn-danger" onclick="reject('${
+                  docSnap.id
+                }')">Từ chối</button>
+              </div>
+            </div>
+          `;
+          });
+          listEl.appendChild(item);
         });
+      }
 
-        // 4. Tiền nhà: tính tổng chi tiết
-        const billsSnap = await getDocs(collection(db, "bills"));
-        let calcTotal = 0;
-        billsSnap.forEach((doc) => {
-          const data = doc.data();
-          // Giả sử bills document chứa các field: houseFixed, electricity, netTrash, water, ownerSent
-          calcTotal +=
-            (data.houseFixed || 0) +
-            (data.electricity || 0) +
-            (data.netTrash || 0) +
-            (data.water || 0);
-        });
-        document.getElementById("calc-total").textContent = calcTotal;
+      async function approve(expId) {
+        const docRef = doc(db, "expenses", expId);
+        await updateDoc(docRef, { status: "approved" });
+        loadPending();
+      }
+      async function reject(expId) {
+        const docRef = doc(db, "expenses", expId);
+        await updateDoc(docRef, { status: "rejected" });
+        loadPending();
+      }
 
-        // Giả sử chỉ lấy version của bills có field ownerSent
-        // Bạn nhập ownerSent khi admin nhập số chủ nhà báo
-        let ownerTotal = 0;
-        billsSnap.forEach((doc) => {
-          const data = doc.data();
-          if (data.ownerSent != null) {
-            ownerTotal += data.ownerSent;
-          }
-        });
-        document.getElementById("owner-total").textContent = ownerTotal;
-
-        const diffEl = document.getElementById("diff");
-        const diff = ownerTotal - calcTotal;
-        diffEl.textContent =
-          diff > 0
-            ? `Thừa ${diff} VNĐ`
-            : diff < 0
-            ? `Thiếu ${-diff} VNĐ`
-            : "Đủ khớp";
-        if (diff !== 0) {
-          diffEl.style.color = "red";
+      async function fetchUserName(uid) {
+        const userDoc = await getDocs(
+          query(collection(db, "users"), where("__name__", "==", uid))
+        );
+        // hoặc trực tiếp sử dụng doc(db, 'users', uid)
+        const d = await getDocs(
+          query(collection(db, "users"), where("uid", "==", uid))
+        );
+        // tùy data của bạn
+        // giả sử bạn có users/{uid} với field displayName
+        const userSnapshot = await getDocs(collection(db, "users"));
+        // Tìm in list
+        // (đơn giản mình làm fetch từng lần, bạn có thể tối ưu)
+        const docRef = doc(db, "users", uid);
+        const docSnap = await docRef.get();
+        if (docSnap.exists()) {
+          return docSnap.data().displayName || uid;
+        } else {
+          return uid;
         }
       }
+
+      // load biểu đồ và pending ở init
+      loadPending();
+      // load biểu đồ giống mẫu trước
     </script>
   </body>
 </html>

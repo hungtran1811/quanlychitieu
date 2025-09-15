@@ -3,30 +3,93 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Dashboard - Người dùng</title>
+    <title>Dashboard Người Dùng</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
-    <div id="nav">
-      <span id="greeting"></span>
-      <button id="btn-logout">Đăng xuất</button>
+  <body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="#">Chi tiêu phòng</a>
+        <div class="d-flex">
+          <span class="navbar-text me-3" id="greeting">Xin chào</span>
+          <button class="btn btn-outline-light" id="btn-logout">
+            Đăng xuất
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container py-4">
+      <!-- Form thêm khoản chi -->
+      <div class="card mb-4 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">Thêm khoản chi mới</h5>
+          <form id="form-expense">
+            <div class="mb-3">
+              <label for="input-amount" class="form-label">Số tiền</label>
+              <input
+                type="number"
+                class="form-control"
+                id="input-amount"
+                required
+              />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Chia đều hay tùy chỉnh</label>
+              <select class="form-select" id="input-split-type">
+                <option value="equal">Chia đều</option>
+                <option value="custom">Tùy chỉnh</option>
+              </select>
+            </div>
+            <div class="mb-3" id="custom-split-container" style="display: none">
+              <!-- số người chia & input từng người -->
+              <label class="form-label">Chi tiết chia</label>
+              <div id="custom-split-fields">
+                <!-- JS sẽ render input cho mỗi thành viên -->
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="input-description" class="form-label">Mô tả</label>
+              <input type="text" class="form-control" id="input-description" />
+            </div>
+            <button type="submit" class="btn btn-success">Gửi</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Thông tin nợ -->
+      <div class="card mb-4 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">Tình trạng nợ</h5>
+          <p>Bạn đang nợ: <strong id="you-owe">0 VNĐ</strong></p>
+          <p>Người khác nợ bạn: <strong id="others-owe">0 VNĐ</strong></p>
+        </div>
+      </div>
+
+      <!-- Danh sách các khoản chi -->
+      <div class="row">
+        <div class="col-md-6 mb-4">
+          <div class="card shadow-sm">
+            <div class="card-header">Các khoản bạn đã trả</div>
+            <div class="card-body" id="your-expenses-list"></div>
+          </div>
+        </div>
+        <div class="col-md-6 mb-4">
+          <div class="card shadow-sm">
+            <div class="card-header">Các khoản bạn nợ người khác</div>
+            <div class="card-body" id="shared-to-you-list"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div id="content">
-      <h2>Bạn đang nợ: <span id="you-owe">0</span> VNĐ</h2>
-      <h2>Người khác nợ bạn: <span id="others-owe">0</span> VNĐ</h2>
-
-      <h3>Các khoản chi của bạn</h3>
-      <div id="your-expenses-list"></div>
-
-      <h3>Các khoản người khác nợ bạn (chia nợ từ khoản bạn thanh toán)</h3>
-      <div id="shared-from-you-list"></div>
-
-      <h3>Các khoản bạn nợ từ người khác</h3>
-      <div id="shared-to-you-list"></div>
-    </div>
-
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script type="module">
+      // giống logic Firebase + auth như trước, thêm phần xử lý form submit
       import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
       import {
         getAuth,
@@ -36,10 +99,11 @@
       import {
         getFirestore,
         collection,
+        addDoc,
+        serverTimestamp,
         query,
         where,
         getDocs,
-        onSnapshot,
         orderBy,
       } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
@@ -53,14 +117,12 @@
       };
 
       const ADMIN_UID = "rVrRomrCGbPqPcrPddtBTpdcLoh2";
-
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const db = getFirestore(app);
 
       onAuthStateChanged(auth, (user) => {
         if (!user) {
-          // chưa login
           window.location.href = "index.html";
           return;
         }
@@ -68,11 +130,9 @@
           window.location.href = "admin.html";
           return;
         }
-
         document.getElementById("greeting").textContent =
           "Xin chào, " + (user.displayName || user.email);
-
-        // load dữ liệu
+        setupForm();
         loadUserDashboard(user.uid);
       });
 
@@ -82,65 +142,70 @@
         });
       });
 
-      async function loadUserDashboard(uid) {
-        const youOweEl = document.getElementById("you-owe");
-        const othersOweEl = document.getElementById("others-owe");
-        const yourExpensesList = document.getElementById("your-expenses-list");
-        const sharedFromYouList = document.getElementById(
-          "shared-from-you-list"
+      function setupForm() {
+        const splitType = document.getElementById("input-split-type");
+        const customContainer = document.getElementById(
+          "custom-split-container"
         );
-        const sharedToYouList = document.getElementById("shared-to-you-list");
 
-        let youOwe = 0;
-        let othersOwe = 0;
-
-        // 1. Khoản chi bạn đã trả (payerUid == uid), sau khi được duyệt
-        const qPaidByYou = query(
-          collection(db, "expenses"),
-          where("payerUid", "==", uid),
-          where("status", "==", "approved"),
-          orderBy("createdAt", "desc")
-        );
-        const paidByYouSnap = await getDocs(qPaidByYou);
-        paidByYouSnap.forEach((doc) => {
-          const data = doc.data();
-          // tính phần người khác nợ bạn: moneyShared total - bạn trả phần của bạn
-          // Giả sử data: { amount: tổng, shareDetail: {uid1: số, uid2: số,...}, payerUid }
-          const shareDetail = data.shareDetail || {};
-          Object.keys(shareDetail).forEach((otherUid) => {
-            if (otherUid !== uid) {
-              othersOwe += shareDetail[otherUid];
-            }
-          });
-          // hiển thị list
-          const div = document.createElement("div");
-          div.textContent = `Bạn đã chi ${data.amount} — chia cho ${
-            Object.keys(shareDetail).length
-          } người`;
-          sharedFromYouList.appendChild(div);
-        });
-
-        // 2. Khoản chi bạn nợ người khác: bạn nằm trong splitTo / shareDetail và payerUid ≠ you
-        const qYouOwe = query(
-          collection(db, "expenses"),
-          where("status", "==", "approved"),
-          orderBy("createdAt", "desc")
-        );
-        const youOweSnap = await getDocs(qYouOwe);
-        youOweSnap.forEach((doc) => {
-          const data = doc.data();
-          const shareDetail = data.shareDetail || {};
-          if (data.payerUid !== uid && shareDetail[uid]) {
-            youOwe += shareDetail[uid];
-            const div = document.createElement("div");
-            div.textContent = `Bạn nợ ${data.payerUid} số ${shareDetail[uid]} từ khoản ${data.amount}`;
-            sharedToYouList.appendChild(div);
+        splitType.addEventListener("change", () => {
+          if (splitType.value === "custom") {
+            customContainer.style.display = "block";
+            // render custom fields, giả sử bạn biết danh sách member trong room
+          } else {
+            customContainer.style.display = "none";
           }
         });
 
-        // 3. Cập số hiển thị
-        youOweEl.textContent = youOwe;
-        othersOweEl.textContent = othersOwe;
+        const form = document.getElementById("form-expense");
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const amount = Number(document.getElementById("input-amount").value);
+          const splitTypeValue =
+            document.getElementById("input-split-type").value;
+          const description =
+            document.getElementById("input-description").value;
+          const payerUid = auth.currentUser.uid;
+          const createdAt = serverTimestamp();
+
+          // xác định shareDetail
+          let shareDetail = {};
+          // giả sử bạn có mảng userList chứa các member {uid, displayName}
+          // nếu equal: chia đều
+          // nếu custom: lấy từ các input custom
+
+          // Example mẫu:
+          const userList = []; // TODO: load từ Firestore users trong room
+          if (splitTypeValue === "equal") {
+            const num = userList.length;
+            const per = Math.floor(amount / num);
+            userList.forEach((u) => {
+              shareDetail[u.uid] = per;
+            });
+          } else {
+            // custom xử lý nhập từng người
+          }
+
+          await addDoc(collection(db, "expenses"), {
+            payerUid,
+            amount,
+            description,
+            shareDetail,
+            status: "pending",
+            createdAt,
+          });
+
+          alert("Gửi khoản chi, chờ admin duyệt.");
+          form.reset();
+          document.getElementById("custom-split-container").style.display =
+            "none";
+          // reload list hoặc cập nhật
+        });
+      }
+
+      async function loadUserDashboard(uid) {
+        // logic như trước, dùng displayName thay cho uid
+        // bạn cần load users collection để lấy tên theo uid
       }
     </script>
   </body>
