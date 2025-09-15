@@ -1,51 +1,41 @@
 /* styles.css */
-:root {
-    --bg-color: #ffffff;
-    --text-color: #000000;
-    --primary-color: #007bff;
-}
-
-body.dark {
-    --bg-color: #121212;
-    --text-color: #eeeeee;
-    --primary-color: #4dabf5;
-}
 
 body {
-    margin: 0;
-    padding: 0;
-    background-color: var(--bg-color);
-    color: var(--text-color);
-    font-family: Arial, sans-serif;
+    background-color: #ffffff;
+    color: #212529;
 }
 
-#nav {
-    display: flex;
-    justify-content: space-between;
-    padding: 1rem;
-    background-color: var(--primary-color);
-    color: #fff;
+.card,
+.navbar,
+#sidebar,
+#sidebar-admin {
+    background-color: #ffffff;
 }
 
-#content {
-    padding: 1rem;
+.navbar-brand,
+.nav-link {
+    font-weight: 600;
 }
 
-#login-container {
-    margin-top: 5rem;
-    text-align: center;
+.nav-link.active {
+    font-weight: 700;
 }
 
-button {
-    cursor: pointer;
-    padding: 0.5rem 1rem;
-    margin: 0.5rem;
+.display-6 {
+    font-size: 2rem;
 }
 
-@media (max-width: 600px) {
+#sidebar,
+#sidebar-admin {
+    border-right: 1px solid #dee2e6;
+}
 
-    #nav,
-    #content {
-        padding: 0.5rem;
-    }
+/* avatar style */
+img.rounded-circle {
+    border: 1px solid #dee2e6;
+}
+
+/* custom-split input spacing */
+#custom-split-fields .form-control {
+    margin-bottom: 0.5rem;
 }

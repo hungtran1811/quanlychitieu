@@ -2,81 +2,39 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <title>Login • Quản lý chi tiêu</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Login - Quản lý chi tiêu</title>
-    <!-- Bootstrap 5 CSS -->
+
+    <!-- Bootstrap 5 -->
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
+
+    <!-- Google Font Exo -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Exo:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body class="bg-light">
+  <body class="bg-light text-dark" style="font-family: 'Exo', sans-serif">
     <div
-      class="container vh-100 d-flex flex-column justify-content-center align-items-center"
+      class="container vh-100 d-flex justify-content-center align-items-center"
     >
-      <div class="card shadow-sm w-100" style="max-width: 400px">
+      <div class="card shadow-sm p-4" style="max-width: 400px; width: 100%">
         <div class="card-body text-center">
-          <h2 class="card-title mb-4">Quản lý chi tiêu</h2>
-          <button id="btn-google" class="btn btn-danger w-100">
-            <i class="bi bi-google"></i> Đăng nhập với Google
+          <h1 class="card-title mb-4">Quản lý chi tiêu phòng</h1>
+          <button id="btn-google" class="btn btn-primary w-100 mb-3">
+            <i class="bi bi-google"></i> Đăng nhập bằng Google
           </button>
         </div>
       </div>
     </div>
 
-    <!-- Bootstrap Bundle JS (includes Popper) -->
+    <!-- Bootstrap JS bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-      import {
-        getAuth,
-        signInWithPopup,
-        GoogleAuthProvider,
-        signInWithRedirect,
-        getRedirectResult,
-      } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-
-      const firebaseConfig = {
-        apiKey: "AIzaSyA-NnpxWJL8hW1-vyCpNi7fUtQsL4NbzSA",
-        authDomain: "quanlychitieu-3ce52.firebaseapp.com",
-        projectId: "quanlychitieu-3ce52",
-        storageBucket: "quanlychitieu-3ce52.firebasestorage.app",
-        messagingSenderId: "447902402830",
-        appId: "1:447902402830:web:246f2c65982224240b2f5f",
-      };
-
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
-      const provider = new GoogleAuthProvider();
-
-      const ADMIN_UID = "rVrRomrCGbPqPcrPddtBTpdcLoh2";
-
-      getRedirectResult(auth)
-        .then((result) => {
-          if (result && result.user) handleUserLogin(result.user);
-        })
-        .catch(console.error);
-
-      document.getElementById("btn-google").addEventListener("click", () => {
-        if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-          signInWithRedirect(auth, provider);
-        } else {
-          signInWithPopup(auth, provider)
-            .then((result) => {
-              handleUserLogin(result.user);
-            })
-            .catch(console.error);
-        }
-      });
-
-      function handleUserLogin(user) {
-        if (user.uid === ADMIN_UID) {
-          window.location.href = "admin.html";
-        } else {
-          window.location.href = "dashboard.html";
-        }
-      }
-    </script>
+    <script type="module" src="app.js"></script>
   </body>
 </html>
