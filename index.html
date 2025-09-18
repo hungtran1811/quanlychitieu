@@ -1,40 +1,43 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Login • Quản lý chi tiêu</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-    <!-- Bootstrap 5 -->
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
-
-    <!-- Google Font Exo -->
-    <link
-      href="https://fonts.googleapis.com/css2?family=Exo:wght@400;600;700&display=swap"
-      rel="stylesheet"
-    />
-
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body class="bg-light text-dark" style="font-family: 'Exo', sans-serif">
-    <div
-      class="container vh-100 d-flex justify-content-center align-items-center"
-    >
-      <div class="card shadow-sm p-4" style="max-width: 400px; width: 100%">
-        <div class="card-body text-center">
-          <h1 class="card-title mb-4">Quản lý chi tiêu phòng</h1>
-          <button id="btn-google" class="btn btn-primary w-100 mb-3">
-            <i class="bi bi-google"></i> Đăng nhập bằng Google
-          </button>
-        </div>
-      </div>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Expense Manager</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/custom.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Exo:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body class="bg-light" style="font-family:'Exo', sans-serif;">
+  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm px-3">
+    <a class="navbar-brand fw-bold" href="#">Expense Manager</a>
+    <div class="ms-auto d-flex gap-2">
+      <button id="btn-login" class="btn btn-primary">Đăng nhập Google</button>
+      <button id="btn-logout" class="btn btn-outline-secondary d-none">Đăng xuất</button>
     </div>
+  </nav>
 
-    <!-- Bootstrap JS bundle -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script type="module" src="app.js"></script>
-  </body>
+  <div class="container mt-5">
+    <div id="user-info" class="text-center d-none">
+      <img id="user-pic" class="rounded-circle" width="60" height="60" alt="avatar">
+      <h5 id="user-name" class="mt-2"></h5>
+      <p class="text-muted small">Admin UID cấu hình: <span id="admin-uid-preview"></span></p>
+    </div>
+    <div class="text-center mt-4" id="welcome">
+      <p class="text-muted">Đăng nhập để bắt đầu quản lý chi tiêu.</p>
+    </div>
+  </div>
+
+  <!-- Firebase v9 compat (simplifies usage with window.firebase.*) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+  <!-- Load config BEFORE firebase.js -->
+  <script src="config/firebase.config.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/firebase.js"></script>
+  <script src="js/auth.js"></script>
+</body>
 </html>
